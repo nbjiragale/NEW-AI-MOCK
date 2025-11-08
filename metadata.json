@@ -1,0 +1,8 @@
+{
+  "name": "AI Mock Interview",
+  "description": "A beautiful and modern landing page for an AI-powered mock interview platform that helps users practice and improve their interview skills with instant feedback.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
