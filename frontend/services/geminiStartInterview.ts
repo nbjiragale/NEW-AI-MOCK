@@ -163,70 +163,73 @@ export const generateInterviewQuestions = async (setupData: any) => {
     
         // --- Handle Practice Mode separately ---
         if (setupData.type === 'Practice Mode') {
-            prompt = `You are an AI practice partner. Generate interview questions for a user in practice mode based on the following session details.
+            prompt = `You are an AI practice partner. Your goal is to help a user prepare for an interview. Generate a set of questions based on the following session details.
+
+Session Details:
+- Interview Type: ${setupData.interviewType}`;
     
-    Session Details:
-    - Interview Type: ${setupData.interviewType}`;
-    
-            if (setupData.practiceType === 'By Topic Name') {
-                prompt += `\n- Topic: ${setupData.topicName}`;
-            } else if (setupData.practiceType === 'Build Confidence') {
-                const reflections = setupData.confidenceAnswers.map((item: { question: string, answer: string }) => `- ${item.question}\n  - ${item.answer}`).join('\n');
-                prompt += `\n- User's Reflections to Build Confidence On:\n${reflections}`;
-            }
-            
             let questionFocus = '';
             switch(setupData.interviewType) {
                 case 'HR':
-                    questionFocus = 'Generate questions focusing on cultural fit, past experiences, and career goals. Avoid technical questions.';
+                    questionFocus = 'Generate questions focusing on cultural fit, past experiences, and career goals. Your tone should be professional but welcoming. Avoid technical questions.';
                     break;
                 case 'Behavioral/Managerial':
                     questionFocus = 'Generate behavioral and situational questions (STAR method). Focus on leadership, teamwork, and problem-solving scenarios. Avoid coding challenges.';
                     break;
                 default: // Technical, Combined
-                    questionFocus = 'Generate a mix of conceptual theory questions and practical hands-on coding challenges based on the topic.';
+                    questionFocus = 'Generate a mix of conceptual theory questions and practical hands-on coding challenges based on the topic. Start with fundamentals and gradually increase difficulty.';
                     break;
             }
-    
-            prompt += `\n\nQuestion Focus: ${questionFocus}`;
-    
+
+            if (setupData.practiceType === 'By Topic Name') {
+                prompt += `\n- Topic: ${setupData.topicName}`;
+                prompt += `\n\nYour Task: Generate a series of questions related to this topic. ${questionFocus}`;
+            } else if (setupData.practiceType === 'Build Confidence') {
+                const reflections = setupData.confidenceAnswers.map((item: { question: string, answer: string }) => `- ${item.question}\n  - User's Answer: ${item.answer}`).join('\n');
+                prompt += `\n\nUser's Reflections to Build Confidence On:\n${reflections}`;
+                prompt += `\n\nYour Task: The user wants to build confidence. Based on their reflections, generate a set of questions that gently challenge these areas. Your tone should be encouraging and supportive. Start with easier questions to build momentum, and then introduce slightly more complex scenarios. ${questionFocus}`;
+            }
+            
         // --- Handle Standard Interview Modes ---
         } else {
             const profile = `Candidate Profile:
-    - Role: ${setupData.role || 'Not specified'}
-    - Experience: ${setupData.experience || 'Not specified'} years
-    - Interview Type: ${setupData.interviewType}
-    - Key Topics to focus on: ${setupData.topics || 'General topics for the role'}
-    - Target Company / Style: ${setupData.targetCompany || 'A generic tech company'}`;
+- Role: ${setupData.role || 'Not specified'}
+- Experience: ${setupData.experience || 'Not specified'} years
+- Interview Type: ${setupData.interviewType}
+- Key Topics to focus on: ${setupData.topics || 'General topics for the role'}
+- Target Company / Style: ${setupData.targetCompany || 'A generic tech company'}`;
     
             let persona = '';
             let questionInstructions = '';
     
             switch (setupData.interviewType) {
                 case 'HR':
-                    persona = 'You are an expert HR interviewer preparing for a screening call.';
-                    questionInstructions = `Generate questions suitable for an HR round.
-    1. Company-Specific Questions: 3-5 questions about cultural fit and motivation to join.
-    2. Theory Questions: 5-7 questions about career history, strengths/weaknesses, and teamwork.
-    3. Hands-On Questions: Generate 0-1 simple workplace scenario question. DO NOT generate technical or coding problems.`;
+                    persona = 'You are an experienced and empathetic HR professional conducting an initial screening interview. Your goal is to assess the candidate\'s personality, motivation, cultural fit, and basic qualifications. You should be welcoming and aim to understand the candidate\'s career aspirations and how they align with the company\'s values.';
+                    questionInstructions = `Generate questions suitable for a comprehensive HR screening round:
+1.  **Company-Specific & Motivation:** 3-4 questions to gauge their research on the company, their genuine interest in the role, and what attracts them to our mission.
+2.  **Career & Background:** 4-5 questions exploring their resume, career journey, key achievements, and reasons for leaving previous roles.
+3.  **Behavioral & Situational:** 2-3 questions about teamwork, handling pressure, and workplace communication style.
+Important: Ensure all questions are open-ended. DO NOT generate technical or coding problems. HandsOnQuestions should contain 0-1 simple workplace scenario questions.`;
                     break;
     
                 case 'Behavioral/Managerial':
-                    persona = 'You are an expert Hiring Manager conducting a behavioral interview.';
-                    questionInstructions = `Generate behavioral and managerial questions.
-    1. Company-Specific Questions: 3-5 questions related to leadership principles and company values.
-    2. Theory Questions: 7-10 behavioral questions (STAR method) on leadership, conflict, and project management.
-    3. Hands-On Questions: Generate 1-2 scenario-based problems about team or project management. DO NOT generate technical or coding problems.`;
+                    persona = 'You are a seasoned Hiring Manager for a fast-paced team. You are looking for a candidate who not only has the right experience but also demonstrates strong leadership, problem-solving, and collaborative skills. Your interview style is probing and based on real-world scenarios. You want to understand *how* a candidate has handled situations in the past.';
+                    questionInstructions = `Generate behavioral and situational questions designed to be answered using the STAR method (Situation, Task, Action, Result):
+1.  **Leadership & Influence:** 3-4 questions about leading projects, mentoring others, and influencing decisions.
+2.  **Conflict & Problem Solving:** 3-4 questions about resolving disagreements, handling difficult stakeholders, and overcoming challenges.
+3.  **Teamwork & Collaboration:** 2-3 questions about their role in a team and contributing to team success.
+4.  **Hands-On Scenarios:** For the HandsOnQuestions, generate 1-2 complex scenario-based problems about team or project management.
+Important: Frame questions with 'Tell me about a time when...' or 'Describe a situation where...'. DO NOT generate technical or coding problems.`;
                     break;
     
                 case 'Technical':
                 case 'Combined':
                 default:
-                    persona = 'You are an expert technical interviewer preparing for a mock interview.';
-                    questionInstructions = `Generate questions categorized into three types:
-    1. Company-Specific Questions: Relevant to the company style and potential technical stack.
-    2. Theory Questions: Conceptual technical questions based on the candidate's profile.
-    3. Hands-On Questions: 1-2 practical coding challenges. For each, provide a title and a detailed description.`;
+                    persona = 'You are a Senior Engineer and a key technical interviewer for your team. You value clear communication, strong fundamentals, and a practical approach to problem-solving. Your goal is to accurately assess the candidate\'s technical depth, their ability to write clean and efficient code, and how they articulate their thought process.';
+                    questionInstructions = `Generate a balanced set of technical interview questions for the specified profile:
+1.  **Company-Specific / Stack-Relevant:** 2-3 questions that might relate to the target company's known technology stack or business domain.
+2.  **Conceptual Deep Dive (Theory):** 4-5 questions that test fundamental and advanced concepts related to the specified topics.
+3.  **Hands-On Coding Challenge:** 1 challenging, practical coding problem that requires not just a solution, but also a discussion of trade-offs and optimizations. Provide a clear title and a detailed description with examples.`;
                     break;
             }
     
