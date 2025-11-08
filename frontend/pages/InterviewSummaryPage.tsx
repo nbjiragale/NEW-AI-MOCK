@@ -65,10 +65,11 @@ interface TranscriptItem {
 interface InterviewSummaryPageProps {
     setupData: any;
     transcript: TranscriptItem[] | null;
+    interviewDuration: number | null;
     onStartNew: () => void;
 }
 
-const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, transcript, onStartNew }) => {
+const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, transcript, interviewDuration, onStartNew }) => {
     const [report, setReport] = useState<ReportData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -76,6 +77,13 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
     
     useEffect(() => {
         const fetchReport = async () => {
+            if (interviewDuration !== null && interviewDuration < 600) { // 10 minutes = 600 seconds
+                setError("The interview was too short (less than 10 minutes) to generate a meaningful performance report. Please try again with a longer session.");
+                setIsLoading(false);
+                setReport(null);
+                return;
+            }
+
             if (!transcript) {
                 setError("No interview data available to generate a report.");
                 setIsLoading(false);
@@ -95,7 +103,7 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
         };
 
         fetchReport();
-    }, [setupData, transcript]);
+    }, [setupData, transcript, interviewDuration]);
     
     const handleDownload = () => {
         if (!reportRef.current || !report) {
@@ -143,8 +151,8 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
 
         if (error) {
              return (
-                <div className="text-center py-20 bg-red-900/20 border border-red-500/50 rounded-lg">
-                    <h2 className="text-2xl font-bold text-red-400">Error</h2>
+                <div className="text-center py-10 px-6 bg-red-900/20 border border-red-500/50 rounded-lg">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">Report Not Generated</h2>
                     <p className="text-gray-300">{error}</p>
                 </div>
             );

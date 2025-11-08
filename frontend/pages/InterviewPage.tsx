@@ -49,7 +49,7 @@ interface TranscriptItem {
 }
 
 interface InterviewPageProps {
-  onLeave: (transcript: TranscriptItem[]) => void;
+  onLeave: (transcript: TranscriptItem[], duration: number) => void;
   setupData: any;
   interviewQuestions: any;
   interviewerDetails: any[];
@@ -79,6 +79,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   const audioContextRef = useRef<AudioContext | null>(null);
   const animationFrameIdRef = useRef<number | null>(null);
   const isSpeakingRef = useRef(false);
+  const startTimeRef = useRef<number | null>(null);
 
   // State for coding mode
   const [isCodingMode, setIsCodingMode] = useState(false);
@@ -131,6 +132,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   // Main effect for media and live session
   useEffect(() => {
     let isMounted = true;
+    startTimeRef.current = Date.now();
 
     const setupAudioAnalysis = (stream: MediaStream) => {
       if (!isMounted || !stream.getAudioTracks().length) return;
@@ -331,7 +333,9 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
       streamRef.current.getTracks().forEach(track => track.stop());
     }
     sessionManagerRef.current?.close();
-    onLeave(transcript);
+    const endTime = Date.now();
+    const durationInSeconds = startTimeRef.current ? Math.round((endTime - startTimeRef.current) / 1000) : 0;
+    onLeave(transcript, durationInSeconds);
   };
   
   const handleAskQuestion = (type: Persona) => {
