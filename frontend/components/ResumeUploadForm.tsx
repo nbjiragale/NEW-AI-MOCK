@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { analyzeResume } from '../services/geminiService';
 
 const FormSelect: React.FC<{ label: string; name: string; children: React.ReactNode; defaultValue?: string; value?: string; onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void }> = ({ label, name, children, defaultValue, value, onChange }) => (
     <div>
@@ -26,7 +27,6 @@ const FormInput: React.FC<{ label: string; type: string; placeholder: string; na
             defaultValue={defaultValue || ''}
             className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 transition"
             placeholder={placeholder}
-            required
         />
     </div>
 );
@@ -42,6 +42,7 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [initialFile, setInitialFile] = useState(initialData ? { name: initialData.fileName, size: initialData.fileSize } : null);
     const [interviewType, setInterviewType] = useState(initialData?.interviewType || 'Technical');
+    const [isLoading, setIsLoading] = useState(false);
 
     const languages = [
         "Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "Go", "Rust", "PHP", "Ruby", "Swift", "Kotlin", "SQL"
@@ -85,28 +86,64 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
         }
     }
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (!file && !initialFile) return;
+        const form = e.currentTarget; // Store the form element before any async calls
 
-        const formData = new FormData(e.currentTarget);
-        const data = Object.fromEntries(formData.entries());
-        data.type = 'By Resume';
+        if (!file) {
+            alert("Please upload a resume file to analyze.");
+            return;
+        };
 
-        const currentFile = file || initialFile;
-        if(currentFile) {
-            data.fileName = currentFile.name;
-            data.fileSize = typeof currentFile.size === 'number' ? `${(currentFile.size / 1024).toFixed(2)} KB` : currentFile.size;
+        setIsLoading(true);
+
+        try {
+            const analysisResult = await analyzeResume(file);
+            
+            const formData = new FormData(form); // Use the stored form element
+            const otherData = Object.fromEntries(formData.entries());
+            
+            const userTopics = otherData.topics as string;
+            const aiTopics = analysisResult.skills.join(', ');
+
+            const combinedData = {
+                type: 'By Resume',
+                fileName: file.name,
+                fileSize: `${(file.size / 1024).toFixed(2)} KB`,
+                // Form selections
+                ...otherData,
+                // AI Extracted details, which will override any form fields with the same name if they existed
+                candidateName: analysisResult.candidateName,
+                experience: analysisResult.yearsOfExperience,
+                role: analysisResult.role,
+                topics: userTopics && userTopics.trim() ? userTopics : aiTopics,
+            };
+
+            onSubmit(combinedData);
+
+        } catch (error) {
+            console.error("Error analyzing resume:", error);
+            alert("Sorry, we couldn't analyze your resume. Please check the file format (PDF, DOCX, TXT) or try again.");
+        } finally {
+            setIsLoading(false);
         }
-        
-        onSubmit(data);
     };
 
     const displayFile = file || initialFile;
-    const canSubmit = !!file || !!initialFile;
+    const canSubmit = !!file; // Can only submit if a new file is staged for upload.
 
     return (
-        <div className="p-8 bg-slate-800/50 rounded-b-lg rounded-r-lg border border-slate-700 border-t-0">
+        <div className="relative p-8 bg-slate-800/50 rounded-b-lg rounded-r-lg border border-slate-700 border-t-0">
+            {isLoading && (
+                <div className="absolute inset-0 bg-dark/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-lg">
+                    <svg className="animate-spin h-8 w-8 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p className="text-white text-lg font-semibold">Analyzing Resume...</p>
+                    <p className="text-gray-400">Please wait, we are extracting the details.</p>
+                </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                     <label className="block mb-2 text-sm font-medium text-gray-300">Upload Resume</label>
@@ -123,6 +160,7 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
                             className="hidden"
                             accept=".pdf,.doc,.docx,.txt"
                             onChange={handleFileChange}
+                            disabled={isLoading}
                         />
                         {displayFile ? (
                              <div className="text-center">
@@ -136,6 +174,7 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
                                      type="button"
                                      onClick={(e) => { e.stopPropagation(); removeFile(); }}
                                      className="mt-2 text-xs text-red-500 hover:text-red-400"
+                                     disabled={isLoading}
                                  >
                                      Remove file
                                  </button>
@@ -190,7 +229,7 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
                 
                 {(interviewType === 'Technical' || interviewType === 'Combined') && (
                     <>
-                         <FormInput label="Main Topics to Focus On" name="topics" type="text" placeholder="e.g., System Design, Behavioral" defaultValue={initialData?.topics}/>
+                         <FormInput label="Main Topics to Focus On (Optional, AI will suggest from resume)" name="topics" type="text" placeholder="e.g., System Design, Behavioral" defaultValue={initialData?.topics}/>
                          <FormSelect label="Coding Language Preference" name="language" defaultValue={initialData?.language}>
                             <option value="">Select a language</option>
                             {languages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
@@ -200,11 +239,11 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
                     </>
                 )}
                 
-                <FormInput label="Target Company / Interview Style" name="targetCompany" type="text" placeholder="e.g., FAANG, Startup, Service-based" defaultValue={initialData?.targetCompany}/>
+                <FormInput label="Target Company / Interview Style (Optional)" name="targetCompany" type="text" placeholder="e.g., FAANG, Startup, Service-based" defaultValue={initialData?.targetCompany}/>
 
                 <div className="pt-4">
-                    <button type="submit" className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!canSubmit}>
-                        Start Interview
+                    <button type="submit" className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!canSubmit || isLoading}>
+                        {isLoading ? 'Analyzing...' : 'Analyze & Start Interview'}
                     </button>
                 </div>
             </form>
