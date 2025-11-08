@@ -58,13 +58,13 @@ const ControlButton: React.FC<{
 );
 
 const VideoPlaceholder = ({ name, role, isSpeaking }: { name: string, role: string, isSpeaking: boolean }) => (
-    <div className={`w-full bg-slate-800/50 rounded-xl flex items-center justify-between border transition-all duration-300 p-3 shadow-lg ${isSpeaking ? 'ring-2 ring-primary border-primary' : 'border-slate-700'}`}>
-        <div className="flex flex-col">
-          <p className="font-semibold text-white text-sm">{name}</p>
-          <p className="text-xs text-gray-400">{role}</p>
+    <div className={`w-full aspect-video bg-black rounded-xl flex flex-col items-center justify-center border transition-all duration-300 p-3 shadow-lg relative overflow-hidden ${isSpeaking ? 'ring-2 ring-primary border-primary' : 'border-slate-700'}`}>
+        <div className="h-16 w-16 bg-slate-700 rounded-full flex items-center justify-center ring-4 ring-slate-600 mb-2">
+            <span className="text-2xl font-bold text-primary">{name.charAt(0)}</span>
         </div>
-        <div className="h-10 w-10 bg-slate-700 rounded-full flex items-center justify-center ring-2 ring-slate-600 flex-shrink-0 ml-3">
-            <span className="text-lg font-bold text-primary">{name.charAt(0)}</span>
+        <div className="absolute bottom-2 left-2 text-xs bg-black/40 px-2 py-0.5 rounded text-left">
+            <p className="font-semibold text-white">{name}</p>
+            <p className="text-gray-300">{role}</p>
         </div>
     </div>
 );
@@ -468,32 +468,27 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                 )}
             </div>
         ) : (
-            <>
-                <div className="flex-1"></div>
-                <div className="flex-1 flex justify-center">
-                   {canShowHandsOnButton && (
-                     <div className="relative group">
-                        <button 
-                        onClick={() => setIsCodingMode(true)}
-                        className="px-4 py-2 text-sm font-mono bg-slate-800 rounded-md hover:bg-slate-700 transition-colors text-gray-300 border border-slate-700"
-                        aria-label="Hands-On Coding"
-                        >
-                        &lt;/&gt;
-                        </button>
-                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2 whitespace-nowrap shadow-lg">
-                        Hands-On
-                        </div>
-                    </div>
-                   )}
-                </div>
-            </>
+            <div className="flex-1" />
         )}
-        
-        <div className="flex justify-end items-center" style={{ flexBasis: isCodingMode ? 'auto' : '33.33%' }}>
-          <div className="text-sm text-gray-300 bg-slate-800 px-4 py-2 rounded-md border border-slate-700">
-            <span className="text-gray-400">Time Left: </span>
-            <span className="font-mono font-semibold tracking-wider text-white">{formatTime(timeLeft)}</span>
-          </div>
+        <div className="flex justify-end items-center gap-4">
+            {!isCodingMode && canShowHandsOnButton && (
+                <div className="relative group">
+                    <button 
+                    onClick={() => setIsCodingMode(true)}
+                    className="px-4 py-2 text-sm font-mono bg-slate-800 rounded-md hover:bg-slate-700 transition-colors text-gray-300 border border-slate-700"
+                    aria-label="Hands-On Coding"
+                    >
+                    &lt;/&gt;
+                    </button>
+                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2 whitespace-nowrap shadow-lg">
+                    Hands-On
+                    </div>
+                </div>
+            )}
+            <div className="text-sm text-gray-300 bg-slate-800 px-4 py-2 rounded-md border border-slate-700">
+                <span className="text-gray-400">Time Left: </span>
+                <span className="font-mono font-semibold tracking-wider text-white">{formatTime(timeLeft)}</span>
+            </div>
         </div>
       </div>
       
@@ -501,16 +496,14 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
         {isCodingMode ? (
             <div key="coding-view" className="flex flex-1 animate-fade-in-up" style={{ animationDuration: '0.5s' }}>
                 {/* Question Panel */}
-                <aside className={`bg-slate-900/30 flex flex-col transition-all duration-300 ease-in-out relative border-r border-slate-700 ${isQuestionCollapsed ? 'w-12' : 'w-1/3'}`}>
+                <aside className={`bg-slate-900 flex flex-col transition-all duration-300 ease-in-out relative border-r border-slate-700 ${isQuestionCollapsed ? 'w-12' : 'w-1/3'}`}>
                     <button onClick={() => setIsQuestionCollapsed(!isQuestionCollapsed)} className="absolute top-1/2 -translate-y-1/2 -right-3.5 z-10 w-7 h-7 bg-slate-700 hover:bg-primary rounded-full flex items-center justify-center transition-colors">
                         <span className="font-bold">{isQuestionCollapsed ? '>' : '<'}</span>
                     </button>
                     {activeHandsOnQuestion && (
-                      <div className={`transition-opacity duration-200 ${isQuestionCollapsed ? 'opacity-0' : 'opacity-100'}`}>
-                          <div className="p-4 overflow-y-auto h-full">
-                              <h3 className="text-lg font-semibold text-primary mb-3">{activeHandsOnQuestion.title}</h3>
-                              <p className="text-gray-300 whitespace-pre-wrap text-lg">{activeHandsOnQuestion.description}</p>
-                          </div>
+                      <div className={`p-6 transition-opacity duration-200 h-full overflow-y-auto ${isQuestionCollapsed ? 'opacity-0' : 'opacity-100'}`}>
+                          <h3 className="text-lg font-semibold text-primary mb-4">{activeHandsOnQuestion.title}</h3>
+                          <p className="text-gray-300 whitespace-pre-wrap text-sm leading-relaxed">{activeHandsOnQuestion.description}</p>
                       </div>
                     )}
                 </aside>
