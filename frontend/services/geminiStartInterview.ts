@@ -159,37 +159,85 @@ export const generateInterviewQuestions = async (setupData: any) => {
     };
 
     const buildPrompt = () => {
-        let prompt = `You are an expert technical interviewer preparing for a mock interview. Based on the following candidate profile, generate a set of interview questions.
-        
-Candidate Profile:
-- Role: ${setupData.role || 'Not specified'}
-- Experience: ${setupData.experience || 'Not specified'} years
-- Interview Type: ${setupData.interviewType}
-- Key Topics to focus on: ${setupData.topics || 'General topics for the role'}
-- Target Company / Style: ${setupData.targetCompany || 'A generic tech company'}`;
-
+        let prompt: string;
+    
+        // --- Handle Practice Mode separately ---
         if (setupData.type === 'Practice Mode') {
-            prompt = `You are an AI practice partner. Generate interview questions for a user in practice mode.
-            
-Session Details:
-- Interview Type: ${setupData.interviewType}`;
+            prompt = `You are an AI practice partner. Generate interview questions for a user in practice mode based on the following session details.
+    
+    Session Details:
+    - Interview Type: ${setupData.interviewType}`;
+    
             if (setupData.practiceType === 'By Topic Name') {
                 prompt += `\n- Topic: ${setupData.topicName}`;
             } else if (setupData.practiceType === 'Build Confidence') {
-                 const reflections = setupData.confidenceAnswers.map((item: {question: string, answer: string}) => `- ${item.question}\n  - ${item.answer}`).join('\n');
-                 prompt += `\n- The user wants to build confidence. Based on their reflections below, create questions that target their weaker areas in a supportive way.\n${reflections}`;
+                const reflections = setupData.confidenceAnswers.map((item: { question: string, answer: string }) => `- ${item.question}\n  - ${item.answer}`).join('\n');
+                prompt += `\n- User's Reflections to Build Confidence On:\n${reflections}`;
             }
+            
+            let questionFocus = '';
+            switch(setupData.interviewType) {
+                case 'HR':
+                    questionFocus = 'Generate questions focusing on cultural fit, past experiences, and career goals. Avoid technical questions.';
+                    break;
+                case 'Behavioral/Managerial':
+                    questionFocus = 'Generate behavioral and situational questions (STAR method). Focus on leadership, teamwork, and problem-solving scenarios. Avoid coding challenges.';
+                    break;
+                default: // Technical, Combined
+                    questionFocus = 'Generate a mix of conceptual theory questions and practical hands-on coding challenges based on the topic.';
+                    break;
+            }
+    
+            prompt += `\n\nQuestion Focus: ${questionFocus}`;
+    
+        // --- Handle Standard Interview Modes ---
+        } else {
+            const profile = `Candidate Profile:
+    - Role: ${setupData.role || 'Not specified'}
+    - Experience: ${setupData.experience || 'Not specified'} years
+    - Interview Type: ${setupData.interviewType}
+    - Key Topics to focus on: ${setupData.topics || 'General topics for the role'}
+    - Target Company / Style: ${setupData.targetCompany || 'A generic tech company'}`;
+    
+            let persona = '';
+            let questionInstructions = '';
+    
+            switch (setupData.interviewType) {
+                case 'HR':
+                    persona = 'You are an expert HR interviewer preparing for a screening call.';
+                    questionInstructions = `Generate questions suitable for an HR round.
+    1. Company-Specific Questions: 3-5 questions about cultural fit and motivation to join.
+    2. Theory Questions: 5-7 questions about career history, strengths/weaknesses, and teamwork.
+    3. Hands-On Questions: Generate 0-1 simple workplace scenario question. DO NOT generate technical or coding problems.`;
+                    break;
+    
+                case 'Behavioral/Managerial':
+                    persona = 'You are an expert Hiring Manager conducting a behavioral interview.';
+                    questionInstructions = `Generate behavioral and managerial questions.
+    1. Company-Specific Questions: 3-5 questions related to leadership principles and company values.
+    2. Theory Questions: 7-10 behavioral questions (STAR method) on leadership, conflict, and project management.
+    3. Hands-On Questions: Generate 1-2 scenario-based problems about team or project management. DO NOT generate technical or coding problems.`;
+                    break;
+    
+                case 'Technical':
+                case 'Combined':
+                default:
+                    persona = 'You are an expert technical interviewer preparing for a mock interview.';
+                    questionInstructions = `Generate questions categorized into three types:
+    1. Company-Specific Questions: Relevant to the company style and potential technical stack.
+    2. Theory Questions: Conceptual technical questions based on the candidate's profile.
+    3. Hands-On Questions: 1-2 practical coding challenges. For each, provide a title and a detailed description.`;
+                    break;
+            }
+    
+            prompt = `${persona}\n\nBased on the following candidate profile, generate a set of interview questions.\n\n${profile}\n\n${questionInstructions}`;
         }
-
-        prompt += `\n\nGenerate questions categorized into three types:
-1. Company-Specific Questions: Relevant to the company style.
-2. Theory Questions: Conceptual questions based on the profile.
-3. Hands-On Questions: Practical problems or coding challenges. For each coding challenge, provide a title and a detailed description.
-
-IMPORTANT: Each question must be a single, focused query. Do NOT create compound questions that ask multiple things at once. For example, instead of asking "What is the difference between an interface and an abstract class, and when would you use each?", create two separate questions.
-
-Return the response in a structured JSON format adhering to the provided schema. Ensure the questions are appropriate for the candidate's experience level.`;
-
+    
+        // --- Common Instructions for all modes ---
+        prompt += `\n\nIMPORTANT: Each question must be a single, focused query. Do NOT create compound questions that ask multiple things at once. For example, instead of asking "What is the difference between an interface and an abstract class, and when would you use each?", create two separate questions.
+    
+    Return the response in a structured JSON format adhering to the provided schema. Ensure the questions are appropriate for the candidate's experience level.`;
+    
         return prompt;
     };
 
