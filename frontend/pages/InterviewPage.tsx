@@ -348,7 +348,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
                     ))}
                 </div>
                 <div className="flex-1 flex items-center justify-center min-h-0 p-4">
-                    <div className="w-full max-w-3xl aspect-video bg-black rounded-2xl relative overflow-hidden border border-slate-800 shadow-2xl">
+                    <div className="w-full max-w-2xl aspect-video bg-black rounded-2xl relative overflow-hidden border border-slate-800 shadow-2xl">
                     {!isCameraOn && <div className="absolute inset-0 bg-slate-900 flex items-center justify-center"><p className="text-gray-400">Camera is off</p></div>}
                     <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transition-opacity ${isCameraOn ? 'opacity-100' : 'opacity-0'}`} />
                     
