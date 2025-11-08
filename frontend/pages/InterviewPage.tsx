@@ -264,10 +264,10 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                 Here is the list of questions you must ask in order:
                 ${questionList}
                 CRITICAL RULE: Ask only ONE question at a time. After asking a question, you must wait for the candidate to provide a complete answer before you say anything else or move to the next question.
-                ${intro} After your introduction, immediately ask the very first question from your list.`;
+                ${intro} After your introduction, ask a simple conversational question like "How are you doing today?" or "Shall we begin?". Wait for their response, and then you can proceed with the very first question from your list.`;
              } else {
                 systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${candidateName}.
-                ${intro} After your introduction, immediately ask the candidate to tell you a bit about themselves.
+                ${intro} After your introduction, ask a simple conversational question like "How are you doing today?" or "Shall we begin?". Wait for their response, and then you can ask the candidate to tell you a bit about themselves.
                 CRITICAL RULE: Ask only ONE question at a time and wait for their full response.`;
              }
 

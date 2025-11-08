@@ -52,7 +52,7 @@ const SetupPage: React.FC<SetupPageProps> = ({ initialData, onStart }) => {
   return (
     <section className="py-16 md:py-24">
       <div className="container mx-auto px-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-extrabold text-white">Interview Setup</h1>
             <p className="mt-4 text-lg text-gray-400">Configure your mock interview session.</p>

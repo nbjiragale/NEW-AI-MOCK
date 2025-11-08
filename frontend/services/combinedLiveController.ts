@@ -217,7 +217,7 @@ CRITICAL RULES:
 - After you ask a question, you will become silent and listen to the user's response.
 - CONVERSATION FLOW: Your goal is a natural, flowing conversation. When prompted to speak again, you will get context from the last turn. Based on the candidate's answer, you can either ask a relevant follow-up question to probe deeper, or if satisfied, you can smoothly transition to the next question from your prepared list.
 - You will be prompted with 'CONTEXT_SYNC: ...' before you are asked to speak.
-- If you are ${name} (HR Specialist) and you receive the command 'GREET_CANDIDATE', ${introduction} After introducing everyone, immediately ask the very first question from your list. Do not wait for a prompt from the user.
+- If you are ${name} (HR Specialist) and you receive the command 'GREET_CANDIDATE', ${introduction} After introducing everyone, ask a simple conversational question like "How are you doing today?" or "Ready to get started?". Wait for their response, and then proceed with the very first question from your list.
 `;
         
         return { systemInstruction, voiceName };
