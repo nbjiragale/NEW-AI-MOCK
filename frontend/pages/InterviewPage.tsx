@@ -45,13 +45,15 @@ const ControlButton: React.FC<{
   active: boolean;
   children: React.ReactNode;
   ariaLabel: string;
-}> = ({ onClick, active, children, ariaLabel }) => (
+  disabled?: boolean;
+}> = ({ onClick, active, children, ariaLabel, disabled }) => (
   <button
     onClick={onClick}
     aria-label={ariaLabel}
+    disabled={disabled}
     className={`w-14 h-14 flex items-center justify-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black/50 focus:ring-primary text-white ${
       active ? 'bg-slate-700/80 hover:bg-slate-600/80' : 'bg-red-600/80 hover:bg-red-500/80'
-    }`}
+    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
   >
     {children}
   </button>
@@ -324,6 +326,28 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   }, [isCombinedMode]); // Rerun effect if mode changes, though it shouldn't in practice.
 
   useEffect(() => {
+    // Automatically mute/unmute microphone based on AI speaking state
+    if (streamRef.current) {
+      const audioTrack = streamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        if (isAiSpeaking) {
+          // AI is speaking, so mute the user's mic.
+          if (isMicOn) {
+            audioTrack.enabled = false;
+            setIsMicOn(false);
+          }
+        } else {
+          // AI has finished speaking, so unmute the user's mic for them to respond.
+          if (!isMicOn) {
+            audioTrack.enabled = true;
+            setIsMicOn(true);
+          }
+        }
+      }
+    }
+  }, [isAiSpeaking]);
+
+  useEffect(() => {
     if (streamLoaded && videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
     }
@@ -366,6 +390,10 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   };
 
   const toggleMic = () => {
+    // Disable manual mic control while AI is speaking
+    if (isAiSpeaking) {
+      return;
+    }
     if (streamRef.current) {
       const audioTrack = streamRef.current.getAudioTracks()[0];
       if (audioTrack) {
@@ -588,7 +616,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                         </div>}
                     </div>
                     <div className="flex justify-center gap-4 py-1">
-                        <button onClick={toggleMic} aria-label={isMicOn ? 'Mute microphone' : 'Unmute microphone'} className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isMicOn ? 'bg-slate-600 hover:bg-slate-500' : 'bg-red-600 hover:bg-red-500'}`}>
+                        <button onClick={toggleMic} disabled={isAiSpeaking} aria-label={isMicOn ? 'Mute microphone' : 'Unmute microphone'} className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isMicOn ? 'bg-slate-600 hover:bg-slate-500' : 'bg-red-600 hover:bg-red-500'} ${isAiSpeaking ? 'opacity-50 cursor-not-allowed' : ''}`}>
                             {isMicOn ? <MicOn className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
                         </button>
                         <button onClick={toggleCamera} aria-label={isCameraOn ? 'Turn off camera' : 'Turn on camera'} className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isCameraOn ? 'bg-slate-600 hover:bg-slate-500' : 'bg-red-600 hover:bg-red-500'}`}>
@@ -636,7 +664,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                             )}
                         </div>
                         <div className="flex justify-center gap-4 py-1">
-                            <button onClick={toggleMic} aria-label={isMicOn ? 'Mute microphone' : 'Unmute microphone'} className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isMicOn ? 'bg-slate-700 hover:bg-slate-600' : 'bg-red-600 hover:bg-red-500'}`}>
+                            <button onClick={toggleMic} disabled={isAiSpeaking} aria-label={isMicOn ? 'Mute microphone' : 'Unmute microphone'} className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isMicOn ? 'bg-slate-700 hover:bg-slate-600' : 'bg-red-600 hover:bg-red-500'} ${isAiSpeaking ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                 {isMicOn ? <MicOn className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
                             </button>
                             <button onClick={toggleCamera} aria-label={isCameraOn ? 'Turn off camera' : 'Turn on camera'} className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isCameraOn ? 'bg-slate-700 hover:bg-slate-600' : 'bg-red-600 hover:bg-red-500'}`}>
@@ -676,7 +704,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
 
                     <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/50 to-transparent flex justify-center items-center">
                         <div className="flex items-center gap-6">
-                        <ControlButton onClick={toggleMic} active={isMicOn} ariaLabel={isMicOn ? 'Mute microphone' : 'Unmute microphone'}>
+                        <ControlButton onClick={toggleMic} active={isMicOn} ariaLabel={isMicOn ? 'Mute microphone' : 'Unmute microphone'} disabled={isAiSpeaking}>
                             {isMicOn ? <MicOn className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
                         </ControlButton>
                         <ControlButton onClick={toggleCamera} active={isCameraOn} ariaLabel={isCameraOn ? 'Turn off camera' : 'Turn on camera'}>
