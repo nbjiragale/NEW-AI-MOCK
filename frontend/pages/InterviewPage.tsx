@@ -88,6 +88,10 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
   const streamRef = useRef<MediaStream | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [streamLoaded, setStreamLoaded] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const animationFrameIdRef = useRef<number | null>(null);
+  const isSpeakingRef = useRef(false);
 
   // State for coding mode
   const [isCodingMode, setIsCodingMode] = useState(false);
@@ -127,12 +131,61 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
   useEffect(() => {
     let isMounted = true;
 
+    const setupAudioAnalysis = (stream: MediaStream) => {
+      // Don't run if component unmounted or no audio track
+      if (!isMounted || !stream.getAudioTracks().length) return;
+
+      // FIX: Cast window to any to allow access to webkitAudioContext for wider browser compatibility.
+      const audioContext = new ((window as any).AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = audioContext;
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 512;
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const checkSpeaking = () => {
+        // Stop if component unmounted
+        if (!isMounted) return;
+
+        // If mic is off, ensure speaking state is false
+        if (!streamRef.current?.getAudioTracks()[0]?.enabled) {
+          if (isSpeakingRef.current) {
+            isSpeakingRef.current = false;
+            setIsSpeaking(false);
+          }
+          animationFrameIdRef.current = requestAnimationFrame(checkSpeaking);
+          return;
+        }
+
+        analyser.getByteTimeDomainData(dataArray);
+        let sum = 0.0;
+        for (const value of dataArray) {
+          // Normalize to -1 to 1
+          const normalizedValue = (value - 128) / 128.0;
+          sum += normalizedValue * normalizedValue;
+        }
+        const rms = Math.sqrt(sum / dataArray.length);
+        const speaking = rms > 0.03; // Threshold to avoid background noise
+
+        if (speaking !== isSpeakingRef.current) {
+          isSpeakingRef.current = speaking;
+          setIsSpeaking(speaking);
+        }
+        animationFrameIdRef.current = requestAnimationFrame(checkSpeaking);
+      };
+      
+      checkSpeaking();
+    };
+
     const getMedia = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         if (isMounted) {
           streamRef.current = stream;
           setStreamLoaded(true);
+          setupAudioAnalysis(stream); // Set up audio analysis
         }
       } catch (err) {
         console.error("Error accessing media devices.", err);
@@ -148,6 +201,10 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
 
     return () => {
       isMounted = false;
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+      }
+      audioContextRef.current?.close().catch(console.error);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
@@ -326,7 +383,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
                            <VideoPlaceholder name={details.name} role={details.role} number={index + 1} />
                         </div>
                     ))}
-                    <div className="w-full aspect-video bg-black rounded-xl relative overflow-hidden border border-slate-700 shadow-lg flex-shrink-0">
+                    <div className={`w-full aspect-video bg-black rounded-xl relative overflow-hidden border border-slate-700 shadow-lg flex-shrink-0 transition-all duration-300 ${isSpeaking ? 'ring-2 ring-primary ring-offset-2 ring-offset-slate-800' : ''}`}>
                          {!isCameraOn && <div className="absolute inset-0 bg-slate-900 flex items-center justify-center"><p className="text-gray-400 text-sm">Camera is off</p></div>}
                         <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transition-opacity ${isCameraOn ? 'opacity-100' : 'opacity-0'}`} />
                         <div className="absolute bottom-2 left-2 text-xs bg-black/40 px-2 py-0.5 rounded">
@@ -362,7 +419,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
                     ))}
                 </div>
                 <div className="flex-1 flex items-center justify-center min-h-0 p-4">
-                    <div className="w-full max-w-2xl aspect-video bg-black rounded-2xl relative overflow-hidden border border-slate-800 shadow-2xl">
+                    <div className={`w-full max-w-2xl aspect-video bg-black rounded-2xl relative overflow-hidden border border-slate-800 shadow-2xl transition-all duration-300 ${isSpeaking ? 'ring-4 ring-primary ring-offset-4 ring-offset-dark' : ''}`}>
                     {!isCameraOn && <div className="absolute inset-0 bg-slate-900 flex items-center justify-center"><p className="text-gray-400">Camera is off</p></div>}
                     <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transition-opacity ${isCameraOn ? 'opacity-100' : 'opacity-0'}`} />
                     
