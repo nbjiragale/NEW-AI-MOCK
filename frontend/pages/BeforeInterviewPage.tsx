@@ -94,6 +94,7 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
     const [countdown, setCountdown] = useState(10);
     const [interviewerDetails, setInterviewerDetails] = useState<any[] | null>(null);
     const [currentTipIndex, setCurrentTipIndex] = useState(0);
+    const [tipAnimation, setTipAnimation] = useState('animate-slide-in-right');
     const generatedQuestionsRef = useRef<any>(null);
     const processingStateRef = useRef({ hasStarted: false });
 
@@ -117,7 +118,11 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
         let tipInterval: NodeJS.Timeout | null = null;
         if (stage === 'generating_questions') {
             tipInterval = setInterval(() => {
-                setCurrentTipIndex(prevIndex => (prevIndex + 1) % interviewTips.length);
+                setTipAnimation('animate-slide-out-left');
+                setTimeout(() => {
+                    setCurrentTipIndex(prevIndex => (prevIndex + 1) % interviewTips.length);
+                    setTipAnimation('animate-slide-in-right');
+                }, 500); // Corresponds to animation duration
             }, 4000); // Change tip every 4 seconds
         }
 
@@ -230,14 +235,6 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
                                 );
                             })}
                         </div>
-                         {stage === 'generating_questions' && (
-                            <div className="mt-8 text-center h-24 flex flex-col justify-center">
-                                <p className="text-gray-400 text-sm mb-2">Interview Tip:</p>
-                                <p key={currentTipIndex} className="text-lg text-white animate-fade-in-up">
-                                    "{interviewTips[currentTipIndex]}"
-                                </p>
-                            </div>
-                        )}
                     </>
                 );
             case 'inconsistent':
@@ -296,8 +293,21 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
     return (
         <section className="min-h-screen flex items-center justify-center py-12">
             <div className="container mx-auto px-6">
-                <div className="max-w-md mx-auto p-8 bg-slate-800/50 rounded-xl border border-slate-700 shadow-lg">
-                    {renderContent()}
+                <div className="max-w-md mx-auto">
+                    <div className="p-8 bg-slate-800/50 rounded-xl border border-slate-700 shadow-lg">
+                        {renderContent()}
+                    </div>
+
+                    {stage === 'generating_questions' && (
+                        <div className="mt-8 text-center">
+                            <p className="text-gray-400 text-sm mb-2">Interview Tip:</p>
+                            <div className="relative h-16 flex items-center justify-center overflow-hidden">
+                                <p className={`text-lg text-white absolute px-4 ${tipAnimation}`}>
+                                    "{interviewTips[currentTipIndex]}"
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </section>
