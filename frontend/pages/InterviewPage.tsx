@@ -7,7 +7,7 @@ import { initiateLiveSession } from '../services/geminiLiveService';
 
 // Icons
 const PhoneHangUpIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg xmlns="http://www.w.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 3H8C6.34315 3 5 4.34315 5 6V18C5 19.6569 6.34315 21 8 21H16C17.6569 21 19 19.6569 19 18V6C19 4.34315 17.6569 3 16 3Z" transform="rotate(135 12 12)" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.5 9.5L9.5 14.5M9.5 9.5L14.5 14.5" transform="rotate(135 12 12)" />
     </svg>
@@ -39,46 +39,6 @@ const VideoPlaceholder = ({ name, role, number, isSpeaking }: { name: string, ro
   </div>
 );
 
-const interviewerNames = [
-  'Olivia Chen', 'Amelia Kim', 'Sophia Rodriguez', 'Isabella Patel', 'Mia Nguyen',
-  'Charlotte Williams', 'Ava Johnson', 'Evelyn Garcia', 'Harper Martinez', 'Luna Davis',
-  'Emily Brown', 'Abigail Miller', 'Elizabeth Wilson', 'Sofia Moore', 'Madison Taylor',
-  'Avery Anderson', 'Scarlett Thomas', 'Chloe Jackson', 'Victoria White', 'Grace Harris'
-];
-
-// Function to get random names without repetition
-const getRandomNames = (count: number): string[] => {
-  const shuffled = [...interviewerNames].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, count);
-};
-
-const getInterviewerDetails = (setupData: any) => {
-  const isCombined = setupData?.interviewType === 'Combined';
-  if (isCombined) {
-    const randomNames = getRandomNames(3);
-    return [
-      { name: randomNames[0], role: 'Software Engineer' },
-      { name: randomNames[1], role: 'Hiring Manager' },
-      { name: randomNames[2], role: 'HR Specialist' },
-    ];
-  }
-
-  let role = 'Interviewer';
-  const name = getRandomNames(1)[0];
-  switch (setupData?.interviewType) {
-    case 'Technical':
-      role = 'Software Engineer';
-      break;
-    case 'Behavioral/Managerial':
-      role = 'Hiring Manager';
-      break;
-    case 'HR':
-      role = 'HR Specialist';
-      break;
-  }
-  return [{ name, role }];
-};
-
 interface TranscriptItem {
     speaker: 'Interviewer' | 'You';
     text: string;
@@ -88,17 +48,17 @@ interface InterviewPageProps {
   onLeave: () => void;
   setupData: any;
   interviewQuestions: any;
+  interviewerDetails: any[];
 }
 
-const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, interviewQuestions }) => {
+const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, interviewQuestions, interviewerDetails }) => {
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isMicOn, setIsMicOn] = useState(true);
   
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [sessionStatus, setSessionStatus] = useState<'IDLE' | 'CONNECTING' | 'CONNECTED' | 'ERROR'>('IDLE');
 
-  // FIX: Use useState to determine interviewer details only once on component mount.
-  const [interviewersDetails] = useState(() => getInterviewerDetails(setupData));
+  const interviewersDetails = interviewerDetails || [{ name: 'Interviewer', role: 'AI' }];
 
   const [timeLeft, setTimeLeft] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -205,8 +165,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
     const startSession = async (stream: MediaStream) => {
       setSessionStatus('CONNECTING');
       const firstQuestion = interviewQuestions?.theoryQuestions?.[0] || 'Can you tell me a bit about yourself?';
-      // FIX: Use the consistent interviewer name from the component's state.
-      const interviewerName = interviewersDetails[0].name;
+      const interviewerName = interviewersDetails?.[0]?.name || 'Interviewer';
 
       const systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Start the interview by greeting the candidate, whose name is ${setupData.candidateName || 'there'}, and then ask the first question: "${firstQuestion}". After that, continue the conversation based on their responses. Keep your responses concise.`;
       

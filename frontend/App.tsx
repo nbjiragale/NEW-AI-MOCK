@@ -16,16 +16,19 @@ const App: React.FC = () => {
   const [page, setPage] = useState('landing');
   const [setupData, setSetupData] = useState<any>(null);
   const [interviewQuestions, setInterviewQuestions] = useState<any>(null);
+  const [interviewerDetails, setInterviewerDetails] = useState<any>(null);
 
   const goToSetup = () => {
-    setSetupData(null); // Clear data for a fresh start
+    setSetupData(null); 
     setInterviewQuestions(null);
+    setInterviewerDetails(null);
     setPage('setup');
   };
   
   const goToVerification = (data: any) => {
     setSetupData(data);
     setInterviewQuestions(null);
+    setInterviewerDetails(null);
     setPage('verification');
   };
 
@@ -37,8 +40,9 @@ const App: React.FC = () => {
     setPage('setup');
   };
 
-  const startInterview = (questions: any) => {
+  const startInterview = (questions: any, details: any) => {
     setInterviewQuestions(questions);
+    setInterviewerDetails(details);
     setPage('interview');
   }
 
@@ -46,6 +50,7 @@ const App: React.FC = () => {
     setPage('landing');
     setSetupData(null);
     setInterviewQuestions(null);
+    setInterviewerDetails(null);
   }
 
   if (page === 'setup') {
@@ -84,7 +89,12 @@ const App: React.FC = () => {
 
   if (page === 'interview') {
     return (
-        <InterviewPage setupData={setupData} interviewQuestions={interviewQuestions} onLeave={endInterview} />
+        <InterviewPage 
+          setupData={setupData} 
+          interviewQuestions={interviewQuestions} 
+          interviewerDetails={interviewerDetails}
+          onLeave={endInterview} 
+        />
     );
   }
 
