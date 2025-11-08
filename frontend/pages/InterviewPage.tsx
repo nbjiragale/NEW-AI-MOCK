@@ -327,7 +327,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
     if (streamLoaded && videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
     }
-  }, [streamLoaded]);
+  }, [streamLoaded, isCodingMode]);
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -337,15 +337,22 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
     if (!streamRef.current) return;
     if (isCameraOn) {
       const videoTracks = streamRef.current.getVideoTracks();
+      // Stop and remove all video tracks from the stream
       videoTracks.forEach(track => {
         track.stop();
-        streamRef.current?.removeTrack(track);
+        streamRef.current.removeTrack(track);
       });
       setIsCameraOn(false);
     } else {
       try {
         const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
         const newVideoTrack = videoStream.getVideoTracks()[0];
+        
+        // Clean up any old video tracks before adding the new one.
+        streamRef.current.getVideoTracks().forEach(track => {
+            streamRef.current.removeTrack(track);
+        });
+
         streamRef.current.addTrack(newVideoTrack);
         if (videoRef.current) {
             videoRef.current.srcObject = streamRef.current;
