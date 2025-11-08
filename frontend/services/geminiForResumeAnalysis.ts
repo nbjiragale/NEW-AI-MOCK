@@ -39,11 +39,12 @@ export const analyzeResume = async (file: File) => {
     };
     
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-2.5-pro',
         contents: { parts: [textPart, imagePart] },
         config: {
             responseMimeType: "application/json",
             responseSchema: schema,
+            thinkingConfig: { thinkingBudget: 32768 },
         },
     });
 

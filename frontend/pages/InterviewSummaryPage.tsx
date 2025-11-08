@@ -1,4 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { generateInterviewReport } from '../services/geminiForReportGeneration';
+
+// TypeScript declarations for CDN libraries
+declare var html2canvas: any;
+declare var jspdf: any;
 
 const ThumbsUpIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -45,16 +50,143 @@ const ReportSection: React.FC<{ icon: React.ReactNode; title: string; children: 
     </div>
 );
 
+interface ReportData {
+    strengths: string[];
+    weaknesses: string[];
+    improvements: string[];
+    overallFeedback: string;
+}
+
+interface TranscriptItem {
+    speaker: string;
+    text: string;
+}
+
 interface InterviewSummaryPageProps {
+    setupData: any;
+    transcript: TranscriptItem[] | null;
     onStartNew: () => void;
 }
 
-const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ onStartNew }) => {
+const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, transcript, onStartNew }) => {
+    const [report, setReport] = useState<ReportData | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const reportRef = useRef<HTMLDivElement>(null);
     
-    // Placeholder function for downloading PDF
+    useEffect(() => {
+        const fetchReport = async () => {
+            if (!transcript) {
+                setError("No interview data available to generate a report.");
+                setIsLoading(false);
+                return;
+            }
+            try {
+                setIsLoading(true);
+                setError(null);
+                const generatedReport = await generateInterviewReport(setupData, transcript);
+                setReport(generatedReport);
+            } catch (e) {
+                setError("Sorry, we couldn't generate your report at this time. Please try again later.");
+                console.error(e);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchReport();
+    }, [setupData, transcript]);
+    
     const handleDownload = () => {
-        alert("PDF download functionality is not implemented yet.");
+        if (!reportRef.current || !report) {
+            alert("Report content is not available for download.");
+            return;
+        }
+
+        const reportElement = reportRef.current;
+        const candidateName = setupData?.candidateName || "Interview";
+        const fileName = `${candidateName.replace(/\s/g, '_')}_Report.pdf`;
+
+        html2canvas(reportElement, {
+            backgroundColor: '#0A0A0A', // dark bg
+            scale: 2, // higher resolution
+            useCORS: true, 
+        }).then((canvas: any) => {
+            const imgData = canvas.toDataURL('image/png');
+            const { jsPDF } = jspdf;
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'px',
+                format: [canvas.width, canvas.height]
+            });
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.save(fileName);
+        }).catch((err: any) => {
+             console.error("Error generating PDF:", err);
+             alert("Could not generate PDF. Please try again.");
+        });
     };
+    
+    const renderContent = () => {
+        if (isLoading) {
+            return (
+                <div className="text-center py-20">
+                    <svg className="animate-spin h-12 w-12 text-primary mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <h2 className="text-2xl font-bold text-white">Generating Your Report...</h2>
+                    <p className="text-gray-400">Our AI is analyzing your performance.</p>
+                </div>
+            );
+        }
+
+        if (error) {
+             return (
+                <div className="text-center py-20 bg-red-900/20 border border-red-500/50 rounded-lg">
+                    <h2 className="text-2xl font-bold text-red-400">Error</h2>
+                    <p className="text-gray-300">{error}</p>
+                </div>
+            );
+        }
+
+        if (!report) {
+             return (
+                <div className="text-center py-20">
+                     <p className="text-gray-400">No report data available.</p>
+                </div>
+            );
+        }
+
+        return (
+            <div ref={reportRef} className="p-4 md:p-8 bg-dark">
+                 <div className="space-y-8">
+                    <div className="text-center">
+                        <h2 className="text-3xl font-bold text-white">Performance Summary</h2>
+                        <p className="text-gray-400 mt-2 max-w-2xl mx-auto">{report.overallFeedback}</p>
+                    </div>
+
+                    <ReportSection icon={<ThumbsUpIcon />} title="Strengths">
+                        <ul className="list-disc list-inside space-y-2">
+                           {report.strengths.map((item, index) => <li key={index}>{item}</li>)}
+                        </ul>
+                    </ReportSection>
+
+                    <ReportSection icon={<ThumbsDownIcon />} title="Areas for Improvement">
+                         <ul className="list-disc list-inside space-y-2">
+                             {report.weaknesses.map((item, index) => <li key={index}>{item}</li>)}
+                        </ul>
+                    </ReportSection>
+
+                    <ReportSection icon={<LightbulbIcon />} title="Actionable Suggestions">
+                        <ul className="list-disc list-inside space-y-2">
+                           {report.improvements.map((item, index) => <li key={index}>{item}</li>)}
+                        </ul>
+                    </ReportSection>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <section className="py-16 md:py-24 animate-fade-in-up">
@@ -64,48 +196,28 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ onStartNew 
                         <h1 className="text-4xl md:text-5xl font-extrabold text-white">Interview Report</h1>
                         <p className="mt-4 text-lg text-gray-400">Here's a summary of your performance.</p>
                     </div>
+                    
+                    {renderContent()}
 
-                    <div className="space-y-8">
-                        <ReportSection icon={<ThumbsUpIcon />} title="Strengths">
-                            <ul className="list-disc list-inside space-y-2">
-                                <li><strong>Clear Communication:</strong> You articulated your thoughts clearly and concisely, especially when describing your past projects.</li>
-                                <li><strong>Strong Technical Foundation:</strong> Demonstrated a solid understanding of core concepts in data structures and algorithms.</li>
-                                <li><strong>Positive Attitude:</strong> Maintained a professional and enthusiastic demeanor throughout the interview.</li>
-                            </ul>
-                        </ReportSection>
-
-                        <ReportSection icon={<ThumbsDownIcon />} title="Weaknesses">
-                             <ul className="list-disc list-inside space-y-2">
-                                <li><strong>Answer Structure:</strong> Some behavioral answers could benefit from a more structured approach, like the STAR method, to better highlight outcomes.</li>
-                                <li><strong>Pacing:</strong> At times, you spoke a bit too quickly. Taking a brief pause to structure your thoughts can be beneficial.</li>
-                            </ul>
-                        </ReportSection>
-
-                        <ReportSection icon={<LightbulbIcon />} title="Improvements Needed">
-                            <ul className="list-disc list-inside space-y-2">
-                                <li>Practice framing your experiences using the STAR method to create more impactful stories.</li>
-                                <li>When faced with a complex question, take a moment to think and even verbalize your thought process.</li>
-                                <li>Prepare specific examples that showcase your problem-solving skills in more detail.</li>
-                            </ul>
-                        </ReportSection>
-                    </div>
-
-                    <div className="mt-12 flex flex-col sm:flex-row justify-center gap-4">
-                        <button 
-                            onClick={handleDownload}
-                            className="flex items-center justify-center w-full sm:w-auto bg-slate-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-600 transition-transform transform hover:scale-105 duration-300"
-                        >
-                           <DownloadIcon />
-                           Download PDF
-                        </button>
-                         <button 
-                            onClick={onStartNew}
-                            className="flex items-center justify-center w-full sm:w-auto bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20"
-                        >
-                            <RestartIcon />
-                            Start New Interview
-                        </button>
-                    </div>
+                    {!isLoading && (
+                        <div className="mt-12 flex flex-col sm:flex-row justify-center gap-4">
+                            <button 
+                                onClick={handleDownload}
+                                disabled={!report || !!error}
+                                className="flex items-center justify-center w-full sm:w-auto bg-slate-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-600 transition-transform transform hover:scale-105 duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                               <DownloadIcon />
+                               Download PDF
+                            </button>
+                             <button 
+                                onClick={onStartNew}
+                                className="flex items-center justify-center w-full sm:w-auto bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20"
+                            >
+                                <RestartIcon />
+                                Start New Interview
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </section>

@@ -49,7 +49,7 @@ interface TranscriptItem {
 }
 
 interface InterviewPageProps {
-  onLeave: () => void;
+  onLeave: (transcript: TranscriptItem[]) => void;
   setupData: any;
   interviewQuestions: any;
   interviewerDetails: any[];
@@ -331,7 +331,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
       streamRef.current.getTracks().forEach(track => track.stop());
     }
     sessionManagerRef.current?.close();
-    onLeave();
+    onLeave(transcript);
   };
   
   const handleAskQuestion = (type: Persona) => {

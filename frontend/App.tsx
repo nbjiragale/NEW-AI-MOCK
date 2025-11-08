@@ -18,6 +18,7 @@ const App: React.FC = () => {
   const [setupData, setSetupData] = useState<any>(null);
   const [interviewQuestions, setInterviewQuestions] = useState<any>(null);
   const [interviewerDetails, setInterviewerDetails] = useState<any>(null);
+  const [interviewTranscript, setInterviewTranscript] = useState<any[] | null>(null);
 
   const goToSetup = () => {
     setSetupData(null); 
@@ -47,7 +48,8 @@ const App: React.FC = () => {
     setPage('interview');
   }
 
-  const goToSummary = () => {
+  const goToSummary = (transcript: any[]) => {
+    setInterviewTranscript(transcript);
     setPage('summary');
   }
 
@@ -56,6 +58,7 @@ const App: React.FC = () => {
     setSetupData(null);
     setInterviewQuestions(null);
     setInterviewerDetails(null);
+    setInterviewTranscript(null);
   };
 
   if (page === 'setup') {
@@ -98,7 +101,7 @@ const App: React.FC = () => {
           setupData={setupData} 
           interviewQuestions={interviewQuestions} 
           interviewerDetails={interviewerDetails}
-          onLeave={goToSummary} 
+          onLeave={(transcript) => goToSummary(transcript)} 
         />
     );
   }
@@ -107,7 +110,11 @@ const App: React.FC = () => {
     return (
        <div className="bg-dark min-h-screen overflow-x-hidden">
         <main>
-          <InterviewSummaryPage onStartNew={startNewInterview} />
+          <InterviewSummaryPage 
+            setupData={setupData}
+            transcript={interviewTranscript}
+            onStartNew={startNewInterview} 
+          />
         </main>
       </div>
     )

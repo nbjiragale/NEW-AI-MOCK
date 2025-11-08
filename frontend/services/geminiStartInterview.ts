@@ -295,6 +295,7 @@ Important: Frame questions with 'Tell me about a time when...' or 'Describe a si
             config: {
                 responseMimeType: "application/json",
                 responseSchema: schema,
+                thinkingConfig: { thinkingBudget: 32768 },
             },
         });
         const response = await callGeminiWithRetry(apiCall);
