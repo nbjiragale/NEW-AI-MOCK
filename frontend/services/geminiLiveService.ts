@@ -104,16 +104,15 @@ export const initiateLiveSession = async ({
       onmessage: async (message: LiveServerMessage) => {
         if (message.serverContent?.outputTranscription) {
           const text = message.serverContent.outputTranscription.text;
-          currentOutputTranscription = text;
+          currentOutputTranscription += text;
           onTranscriptionUpdate({ speaker: 'Interviewer', text: currentOutputTranscription });
         } else if (message.serverContent?.inputTranscription) {
           const text = message.serverContent.inputTranscription.text;
-          currentInputTranscription = text;
+          currentInputTranscription += text;
           onTranscriptionUpdate({ speaker: 'You', text: currentInputTranscription });
         }
 
         if (message.serverContent?.turnComplete) {
-            // Fix: Removed logic to push to a local 'history' array as it was unused and unsupported.
             currentInputTranscription = '';
             currentOutputTranscription = '';
         }

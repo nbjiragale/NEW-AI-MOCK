@@ -97,6 +97,9 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [sessionStatus, setSessionStatus] = useState<'IDLE' | 'CONNECTING' | 'CONNECTED' | 'ERROR'>('IDLE');
 
+  // FIX: Use useState to determine interviewer details only once on component mount.
+  const [interviewersDetails] = useState(() => getInterviewerDetails(setupData));
+
   const [timeLeft, setTimeLeft] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -202,7 +205,8 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
     const startSession = async (stream: MediaStream) => {
       setSessionStatus('CONNECTING');
       const firstQuestion = interviewQuestions?.theoryQuestions?.[0] || 'Can you tell me a bit about yourself?';
-      const interviewerName = getInterviewerDetails(setupData)[0].name;
+      // FIX: Use the consistent interviewer name from the component's state.
+      const interviewerName = interviewersDetails[0].name;
 
       const systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Start the interview by greeting the candidate, whose name is ${setupData.candidateName || 'there'}, and then ask the first question: "${firstQuestion}". After that, continue the conversation based on their responses. Keep your responses concise.`;
       
@@ -323,8 +327,6 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
     }
     onLeave();
   };
-  
-  const interviewersDetails = getInterviewerDetails(setupData);
 
   const getTranscriptStatus = () => {
     switch(sessionStatus) {
