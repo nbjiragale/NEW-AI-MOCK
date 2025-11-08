@@ -1,3 +1,4 @@
+// Fix: Removed unused 'Content' import as the history parameter is not supported.
 import { GoogleGenAI, LiveServerMessage, Modality, Blob } from '@google/genai';
 
 // --- Audio Decoding and Encoding Utilities ---
@@ -74,11 +75,14 @@ export const initiateLiveSession = async ({
   
   const sources = new Set<AudioBufferSourceNode>();
   let nextStartTime = 0;
+  
   let currentInputTranscription = '';
   let currentOutputTranscription = '';
 
   const sessionPromise = ai.live.connect({
     model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+    // Fix: Removed the 'history' parameter as it is not a valid property for ai.live.connect.
+    // The conversation context is managed by the live session itself.
     callbacks: {
       onopen: () => {
         console.log('Live session opened.');
@@ -100,15 +104,16 @@ export const initiateLiveSession = async ({
       onmessage: async (message: LiveServerMessage) => {
         if (message.serverContent?.outputTranscription) {
           const text = message.serverContent.outputTranscription.text;
-          currentOutputTranscription += text;
+          currentOutputTranscription = text;
           onTranscriptionUpdate({ speaker: 'Interviewer', text: currentOutputTranscription });
         } else if (message.serverContent?.inputTranscription) {
           const text = message.serverContent.inputTranscription.text;
-          currentInputTranscription += text;
+          currentInputTranscription = text;
           onTranscriptionUpdate({ speaker: 'You', text: currentInputTranscription });
         }
 
         if (message.serverContent?.turnComplete) {
+            // Fix: Removed logic to push to a local 'history' array as it was unused and unsupported.
             currentInputTranscription = '';
             currentOutputTranscription = '';
         }
