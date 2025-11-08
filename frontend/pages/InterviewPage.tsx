@@ -4,7 +4,7 @@ import { CameraOff } from '../icons/CameraOff';
 import { MicOn } from '../icons/MicOn';
 import { MicOff } from '../icons/MicOff';
 import { initiateLiveSession } from '../services/geminiLiveService';
-import { initiateCombinedLiveSession } from '../services/geminiLiveServiceCombined';
+import { CombinedLiveController } from '../services/combinedLiveController';
 
 // Icons
 const PhoneHangUpIcon = () => (
@@ -55,6 +55,8 @@ interface InterviewPageProps {
   interviewerDetails: any[];
 }
 
+type Persona = 'technical' | 'behavioral' | 'hr';
+
 const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, interviewQuestions, interviewerDetails }) => {
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isMicOn, setIsMicOn] = useState(true);
@@ -68,7 +70,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   const [timeLeft, setTimeLeft] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const sessionManagerRef = useRef<{ close: () => void; askQuestion?: (type: 'technical' | 'behavioral' | 'hr') => void; } | null>(null);
+  const sessionManagerRef = useRef<{ close: () => void; askQuestion?: (type: Persona) => void; } | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [streamLoaded, setStreamLoaded] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
@@ -173,30 +175,33 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
       
       try {
         if (isCombinedMode) {
-            sessionManagerRef.current = await initiateCombinedLiveSession({
-                stream,
+            const controller = new CombinedLiveController({
                 interviewers: interviewersDetails,
                 questions: interviewQuestions,
-                onTranscriptionUpdate: (item) => {
-                    setActiveInterviewerName(item.speaker);
-                    setTranscript(prev => {
-                        const newTranscript = [...prev];
-                        const lastItem = newTranscript[newTranscript.length - 1];
-                        if (lastItem && lastItem.speaker === item.speaker) {
-                            lastItem.text = item.text;
-                        } else {
-                            newTranscript.push(item);
+                callbacks: {
+                    onTranscriptionUpdate: (item) => {
+                        setActiveInterviewerName(item.speaker);
+                        setTranscript(prev => {
+                            const newTranscript = [...prev];
+                            const lastItem = newTranscript[newTranscript.length - 1];
+                            if (lastItem && lastItem.speaker === item.speaker) {
+                                lastItem.text = item.text;
+                            } else {
+                                newTranscript.push(item);
+                            }
+                            return newTranscript;
+                        });
+                    },
+                    onAudioStateChange: (speaking) => {
+                        setIsAiSpeaking(speaking);
+                        if (!speaking) {
+                            setActiveInterviewerName(null);
                         }
-                        return newTranscript;
-                    });
-                },
-                onAudioStateChange: (speaking) => {
-                    setIsAiSpeaking(speaking);
-                    if (!speaking) {
-                        setActiveInterviewerName(null);
-                    }
-                },
+                    },
+                }
             });
+            await controller.start(stream);
+            sessionManagerRef.current = controller;
         } else {
              const theoryQs = interviewQuestions?.theoryQuestions || [];
              const companyQs = interviewQuestions?.companySpecificQuestions || [];
@@ -277,7 +282,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
       }
       sessionManagerRef.current?.close();
     };
-  }, []); // Run only on mount
+  }, [isCombinedMode]); // Rerun effect if mode changes, though it shouldn't in practice.
 
   useEffect(() => {
     if (streamLoaded && videoRef.current && streamRef.current) {
@@ -325,10 +330,11 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
     }
+    sessionManagerRef.current?.close();
     onLeave();
   };
   
-  const handleAskQuestion = (type: 'technical' | 'behavioral' | 'hr') => {
+  const handleAskQuestion = (type: Persona) => {
     if (sessionManagerRef.current?.askQuestion && !isAiSpeaking) {
       sessionManagerRef.current.askQuestion(type);
     }
@@ -337,7 +343,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   const getTranscriptStatus = () => {
     switch(sessionStatus) {
       case 'CONNECTING':
-        return 'Connecting to interviewer...';
+        return 'Connecting to interview panel...';
       case 'CONNECTED':
         if(transcript.length === 0) return 'Interviewer is ready. The session will begin shortly.';
         return null; // Don't show anything if transcript is active

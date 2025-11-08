@@ -1,0 +1,310 @@
+// Fix: Removed `LiveSession` as it is not an exported type from `@google/genai`.
+import { GoogleGenAI, LiveServerMessage, Modality, Blob } from '@google/genai';
+
+// --- Audio Decoding and Encoding Utilities (Shared) ---
+
+function decode(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function encode(bytes: Uint8Array): string {
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+async function decodeAudioData(
+  data: Uint8Array,
+  ctx: AudioContext,
+  sampleRate: number,
+  numChannels: number,
+): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) {
+      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    }
+  }
+  return buffer;
+}
+
+function createBlob(data: Float32Array): Blob {
+  const l = data.length;
+  const int16 = new Int16Array(l);
+  for (let i = 0; i < l; i++) {
+    int16[i] = data[i] * 32768;
+  }
+  return {
+    data: encode(new Uint8Array(int16.buffer)),
+    mimeType: 'audio/pcm;rate=16000',
+  };
+}
+
+// --- Controller Interfaces ---
+
+type Persona = 'technical' | 'behavioral' | 'hr';
+
+interface Interviewer {
+    name: string;
+    role: string;
+}
+
+interface CategorizedQuestions {
+    technicalQuestions?: string[];
+    behavioralQuestions?: string[];
+    hrQuestions?: string[];
+    handsOnQuestions?: any[];
+}
+
+interface ControllerCallbacks {
+  onTranscriptionUpdate: (update: { speaker: string; text: string }) => void;
+  onAudioStateChange: (isSpeaking: boolean) => void;
+}
+
+interface ControllerParams {
+    interviewers: Interviewer[];
+    questions: CategorizedQuestions;
+    callbacks: ControllerCallbacks;
+}
+
+// --- The Combined Live Controller ---
+
+export class CombinedLiveController {
+    private ai: GoogleGenAI;
+    // Fix: Using `any` as `LiveSession` is not an exported type. The session object has `close()` and `sendRealtimeInput()` methods.
+    private sessions: Record<Persona, any | null> = { technical: null, behavioral: null, hr: null };
+    private sessionPromises: Record<Persona, Promise<any> | null> = { technical: null, behavioral: null, hr: null };
+    private activePersona: Persona | null = null;
+    private isClosing = false;
+
+    private userStream: MediaStream | null = null;
+    private inputAudioContext: AudioContext | null = null;
+    private outputAudioContext: AudioContext;
+    private scriptProcessorNode: ScriptProcessorNode | null = null;
+    
+    private callbacks: ControllerCallbacks;
+    private interviewers: Record<Persona, Interviewer>;
+    private questions: CategorizedQuestions;
+    
+    private conversationHistory: { speaker: string; text: string }[] = [];
+    private sources = new Set<AudioBufferSourceNode>();
+    private nextStartTime = 0;
+
+    constructor({ interviewers, questions, callbacks }: ControllerParams) {
+        this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+        this.callbacks = callbacks;
+        this.questions = questions;
+        
+        this.interviewers = {
+            technical: interviewers.find(i => i.role === 'Software Engineer')!,
+            behavioral: interviewers.find(i => i.role === 'Hiring Manager')!,
+            hr: interviewers.find(i => i.role === 'HR Specialist')!,
+        };
+        
+        this.outputAudioContext = new ((window as any).AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+    }
+
+    public async start(stream: MediaStream) {
+        this.userStream = stream;
+
+        const techConfig = this.getSessionConfig('technical');
+        const behavioralConfig = this.getSessionConfig('behavioral');
+        const hrConfig = this.getSessionConfig('hr');
+
+        this.sessionPromises.technical = this._createSession('technical', techConfig);
+        this.sessionPromises.behavioral = this._createSession('behavioral', behavioralConfig);
+        this.sessionPromises.hr = this._createSession('hr', hrConfig);
+
+        const [techSession, behavioralSession, hrSession] = await Promise.all([
+            this.sessionPromises.technical,
+            this.sessionPromises.behavioral,
+            this.sessionPromises.hr,
+        ]);
+        
+        this.sessions.technical = techSession;
+        this.sessions.behavioral = behavioralSession;
+        this.sessions.hr = hrSession;
+
+        this._setupAudioProcessing();
+
+        // Kick off the interview with a greeting from HR
+        this.activePersona = 'hr';
+        this.sessions.hr?.sendRealtimeInput({ text: 'GREET_CANDIDATE' });
+    }
+
+    public askQuestion(type: Persona) {
+        if (this.isClosing || !this.sessions[type]) return;
+
+        this.activePersona = type;
+        const activeSession = this.sessions[type];
+
+        // Context Synchronization
+        const historySummary = this.conversationHistory.slice(-4).map(turn => `${turn.speaker}: ${turn.text}`).join('\n');
+        const contextPrompt = `CONTEXT_SYNC: Here is a summary of the most recent conversation:\n${historySummary}\n\nYou are now the active interviewer. Please ask the next question from your list.`;
+        
+        activeSession?.sendRealtimeInput({ text: contextPrompt });
+    }
+
+    public close() {
+        if (this.isClosing) return;
+        this.isClosing = true;
+        console.log("Closing all sessions...");
+        
+        this.scriptProcessorNode?.disconnect();
+        this.inputAudioContext?.close().catch(console.error);
+        this.outputAudioContext.close().catch(console.error);
+
+        Object.values(this.sessions).forEach(session => session?.close());
+    }
+
+    private getSessionConfig(persona: Persona) {
+        const { name } = this.interviewers[persona];
+        let questionList = '';
+        let voiceName: 'Kore' | 'Puck' | 'Zephyr' = 'Zephyr';
+
+        switch(persona) {
+            case 'technical':
+                questionList = [
+                    ...(this.questions.technicalQuestions || []),
+                    ...(this.questions.handsOnQuestions || []).map(q => `For your hands-on challenge: ${q.title}. ${q.description}`)
+                ].map((q, i) => `${i+1}. ${q}`).join('\n');
+                voiceName = 'Kore'; // Female Voice A
+                break;
+            case 'behavioral':
+                questionList = (this.questions.behavioralQuestions || []).map((q, i) => `${i+1}. ${q}`).join('\n');
+                voiceName = 'Puck'; // Male Voice
+                break;
+            case 'hr':
+                questionList = (this.questions.hrQuestions || []).map((q, i) => `${i+1}. ${q}`).join('\n');
+                voiceName = 'Zephyr'; // Female Voice B
+                break;
+        }
+
+        const managerName = this.interviewers.behavioral.name;
+        const engineerName = this.interviewers.technical.name;
+
+        const systemInstruction = `You are ${name}. You are part of an interview panel.
+Your specific role is: ${this.interviewers[persona].role}.
+Here is the list of questions you are responsible for asking, in order:\n${questionList}
+
+CRITICAL RULES:
+- You must ONLY speak when you are the active interviewer.
+- After you ask a question, you will become silent and listen to the user's response.
+- Only ask ONE question from your list when prompted.
+- You will be prompted with 'CONTEXT_SYNC: ...' before you are asked to speak. Review the context, then ask your next question.
+- You MUST preface your response with your name. Example: "${name}: ". This is essential. Do not include your role.
+- If you are ${name} (HR Specialist) and you receive the command 'GREET_CANDIDATE', you must begin the interview by saying: "${name}: Welcome. We are your panel for today. I'm ${name}, and we also have ${managerName}, our Hiring Manager, and ${engineerName}, our Senior Engineer. To begin, please ask for a technical, behavioral, or HR question whenever you're ready."
+`;
+        
+        return { systemInstruction, voiceName };
+    }
+
+    private _createSession(persona: Persona, config: { systemInstruction: string, voiceName: string }): Promise<any> {
+        let currentInputTranscription = '';
+        let currentOutputTranscription = '';
+
+        return this.ai.live.connect({
+            // Fix: Corrected typo in model name.
+            model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+            callbacks: {
+                onopen: () => console.log(`Session opened for ${persona}.`),
+                onclose: () => console.log(`Session closed for ${persona}.`),
+                onerror: (e) => console.error(`Session error for ${persona}:`, e),
+                onmessage: async (message: LiveServerMessage) => {
+                    if (this.isClosing) return;
+
+                    // Handle Transcription
+                    if (message.serverContent?.outputTranscription) {
+                        const text = message.serverContent.outputTranscription.text;
+                        currentOutputTranscription += text;
+                        if(this.activePersona === persona) this.callbacks.onTranscriptionUpdate({ speaker: this.interviewers[persona].name, text: currentOutputTranscription });
+                    } else if (message.serverContent?.inputTranscription) {
+                        const text = message.serverContent.inputTranscription.text;
+                        currentInputTranscription += text;
+                        this.callbacks.onTranscriptionUpdate({ speaker: 'You', text: currentInputTranscription });
+                    }
+
+                    if (message.serverContent?.turnComplete) {
+                        if (currentInputTranscription) this.conversationHistory.push({ speaker: 'You', text: currentInputTranscription });
+                        if (currentOutputTranscription) this.conversationHistory.push({ speaker: this.interviewers[persona].name, text: currentOutputTranscription });
+                        currentInputTranscription = '';
+                        currentOutputTranscription = '';
+                    }
+
+                    // Handle Audio Playback (queued globally)
+                    const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+                    if (base64Audio) {
+                        this.callbacks.onAudioStateChange(true);
+                        this.nextStartTime = Math.max(this.nextStartTime, this.outputAudioContext.currentTime);
+                        const audioBuffer = await decodeAudioData(decode(base64Audio), this.outputAudioContext, 24000, 1);
+                        const source = this.outputAudioContext.createBufferSource();
+                        source.buffer = audioBuffer;
+                        source.connect(this.outputAudioContext.destination);
+                        
+                        source.addEventListener('ended', () => {
+                            this.sources.delete(source);
+                            if (this.sources.size === 0) {
+                                this.callbacks.onAudioStateChange(false);
+                            }
+                        });
+
+                        source.start(this.nextStartTime);
+                        this.nextStartTime += audioBuffer.duration;
+                        this.sources.add(source);
+                    }
+                    
+                    if (message.serverContent?.interrupted) {
+                        for (const source of this.sources.values()) {
+                            source.stop();
+                        }
+                    }
+                }
+            },
+            config: {
+                responseModalities: [Modality.AUDIO],
+                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: config.voiceName } } },
+                inputAudioTranscription: {},
+                outputAudioTranscription: {},
+                systemInstruction: config.systemInstruction,
+            }
+        });
+    }
+
+    private _setupAudioProcessing() {
+        if (!this.userStream) return;
+        this.inputAudioContext = new ((window as any).AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+        const source = this.inputAudioContext.createMediaStreamSource(this.userStream);
+        this.scriptProcessorNode = this.inputAudioContext.createScriptProcessor(4096, 1, 1);
+        
+        this.scriptProcessorNode.onaudioprocess = (audioProcessingEvent) => {
+            if (this.isClosing || !this.activePersona) return;
+            
+            const activeSessionPromise = this.sessionPromises[this.activePersona];
+            if (!activeSessionPromise) return;
+
+            const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
+            const pcmBlob = createBlob(inputData);
+
+            activeSessionPromise.then((session) => {
+                if (this.userStream?.getAudioTracks()[0].enabled) {
+                    session.sendRealtimeInput({ media: pcmBlob });
+                }
+            });
+        };
+        source.connect(this.scriptProcessorNode);
+        this.scriptProcessorNode.connect(this.inputAudioContext.destination);
+    }
+}

@@ -1,5 +1,27 @@
 import { GoogleGenAI, Type } from '@google/genai';
 
+// Helper function for API calls with retry logic
+const callGeminiWithRetry = async (apiCall: () => Promise<any>, maxRetries = 3) => {
+    let delay = 1000; // Start with 1 second delay
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            const result = await apiCall();
+            return result; // Success
+        } catch (error: any) {
+            console.error(`Attempt ${i + 1} failed:`, error);
+            const isOverloadedError = error.message && (error.message.includes('503') || error.message.toLowerCase().includes('overloaded'));
+            if (isOverloadedError && i < maxRetries - 1) {
+                console.log(`Model is overloaded. Retrying in ${delay / 1000} seconds...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2; // Exponential backoff
+            } else {
+                throw error; // Re-throw on non-retryable error or last attempt
+            }
+        }
+    }
+};
+
+
 /**
  * Checks for logical consistency between the candidate's role and topics.
  * @param setupData The configuration data for the interview session.
@@ -32,21 +54,21 @@ export const checkDetailsConsistency = async (setupData: any): Promise<{ isConsi
     }
 
     try {
-        const prompt = `Analyze the following candidate profile for logical consistency, specifically between the 'Role' and the 'Main Topics to Focus On'. For example, a 'Java Developer' role is inconsistent with 'C++' as a main topic. 
-        
-        - Role: ${setupData.role}
-        - Main Topics to Focus On: ${setupData.topics}
-        
-        Is this combination consistent for a job interview preparation? Provide a boolean response and a brief reason.`;
-
-        const response = await ai.models.generateContent({
+        const apiCall = () => ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: prompt,
+            contents: `Analyze the following candidate profile for logical consistency, specifically between the 'Role' and the 'Main Topics to Focus On'. For example, a 'Java Developer' role is inconsistent with 'C++' as a main topic. 
+        
+- Role: ${setupData.role}
+- Main Topics to Focus On: ${setupData.topics}
+        
+Is this combination consistent for a job interview preparation? Provide a boolean response and a brief reason.`,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: schema,
             },
         });
+
+        const response = await callGeminiWithRetry(apiCall);
 
         const jsonText = response.text.trim();
         const result = JSON.parse(jsonText);
@@ -58,7 +80,7 @@ export const checkDetailsConsistency = async (setupData: any): Promise<{ isConsi
             return { isConsistent: true, reasoning: "AI response format was unexpected, proceeding." };
         }
     } catch (error) {
-        console.error("Error checking consistency with Gemini API:", error);
+        console.error("Error checking consistency with Gemini API after retries:", error);
         return { isConsistent: true, reasoning: "Could not perform consistency check due to a technical error." };
     }
 };
@@ -90,32 +112,29 @@ export const validateCompany = async (companyName: string): Promise<{ companyExi
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
     try {
-        const prompt = `Please verify if "${companyName}" is a real, publicly known company. Consider common typos or variations. Provide a boolean response and a brief reason.`;
-        
-        const response = await ai.models.generateContent({
+        const apiCall = () => ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: prompt,
+            contents: `Please verify if "${companyName}" is a real, publicly known company. Consider common typos or variations. Provide a boolean response and a brief reason.`,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: schema,
             },
         });
 
+        const response = await callGeminiWithRetry(apiCall);
+        
         const jsonText = response.text.trim();
         const result = JSON.parse(jsonText);
         
-        // Basic check to ensure the result matches the expected structure
         if (typeof result.companyExists === 'boolean' && typeof result.reasoning === 'string') {
             return result;
         } else {
-             // Fallback if the AI returns an unexpected structure
             console.warn("Gemini response did not match schema:", result);
             return { companyExists: true, reasoning: "AI response format was unexpected, proceeding as valid." };
         }
 
     } catch (error) {
-        console.error("Error validating company with Gemini API:", error);
-        // In case of API error, let the user proceed rather than blocking them.
+        console.error("Error validating company with Gemini API after retries:", error);
         return { companyExists: true, reasoning: "Could not verify due to a technical error. Proceeding." };
     }
 };
@@ -262,7 +281,6 @@ Important: Frame questions with 'Tell me about a time when...' or 'Describe a si
             prompt = `${persona}\n\nBased on the following candidate profile, generate a set of interview questions.\n\n${profile}\n\n${questionInstructions}`;
         }
     
-        // --- Common Instructions for all modes ---
         prompt += `\n\nIMPORTANT: Each question must be a single, focused query. Do NOT create compound questions that ask multiple things at once. For example, instead of asking "What is the difference between an interface and an abstract class, and when would you use each?", create two separate questions.
     
     Return the response in a structured JSON format adhering to the provided schema. Ensure the questions are appropriate for the candidate's experience level.`;
@@ -271,7 +289,7 @@ Important: Frame questions with 'Tell me about a time when...' or 'Describe a si
     };
 
     try {
-        const response = await ai.models.generateContent({
+        const apiCall = () => ai.models.generateContent({
             model: 'gemini-2.5-pro',
             contents: buildPrompt(),
             config: {
@@ -279,10 +297,11 @@ Important: Frame questions with 'Tell me about a time when...' or 'Describe a si
                 responseSchema: schema,
             },
         });
+        const response = await callGeminiWithRetry(apiCall);
         const jsonText = response.text.trim();
         return JSON.parse(jsonText);
     } catch (error) {
-        console.error("Error generating interview questions with Gemini API:", error);
+        console.error("Error generating interview questions with Gemini API after retries:", error);
         throw new Error("Failed to generate interview questions. Please try again.");
     }
 };
