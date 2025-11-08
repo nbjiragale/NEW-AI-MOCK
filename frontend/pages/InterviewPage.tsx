@@ -3,6 +3,7 @@ import { CameraOn } from '../icons/cameraOn';
 import { CameraOff } from '../icons/CameraOff';
 import { MicOn } from '../icons/MicOn';
 import { MicOff } from '../icons/MicOff';
+import { initiateLiveSession } from '../services/geminiLiveService';
 
 // Icons
 const PhoneHangUpIcon = () => (
@@ -29,8 +30,8 @@ const ControlButton: React.FC<{
   </button>
 );
 
-const VideoPlaceholder = ({ name, role, number }: { name: string, role: string, number: number }) => (
-  <div className="w-full aspect-video bg-slate-800/50 rounded-2xl flex flex-col items-center justify-center border border-slate-700 p-4 relative shadow-lg">
+const VideoPlaceholder = ({ name, role, number, isSpeaking }: { name: string, role: string, number: number, isSpeaking: boolean }) => (
+  <div className={`w-full aspect-video bg-slate-800/50 rounded-2xl flex flex-col items-center justify-center border border-slate-700 p-4 relative shadow-lg transition-all duration-300 ${isSpeaking ? 'ring-2 ring-primary' : ''}`}>
     <p className="text-gray-300 font-bold text-lg">{`Interviewer ${number}`}</p>
     <div className="absolute bottom-3 left-3 text-sm bg-black/30 px-2 py-1 rounded-md">
       <span className="font-semibold text-amber-500">{name} - {role}</span>
@@ -49,25 +50,28 @@ const getInterviewerDetails = (setupData: any) => {
   }
 
   let role = 'Interviewer';
+  let name = 'Alex Ray';
   switch (setupData?.interviewType) {
     case 'Technical':
       role = 'Software Engineer';
+      name = 'Alex Ray';
       break;
     case 'Behavioral/Managerial':
       role = 'Hiring Manager';
+      name = 'Casey Morgan';
       break;
     case 'HR':
       role = 'HR Specialist';
+      name = 'Jordan Lee';
       break;
   }
-  return [{ name: 'Alex Ray', role }];
+  return [{ name, role }];
 };
 
-const dummyTranscript = [
-  { speaker: 'Interviewer', text: 'Thanks for joining today. Can you tell me a bit about yourself?' },
-  { speaker: 'You', text: "Of course. I'm a passionate software engineer with 5 years of experience in building scalable web applications." },
-  { speaker: 'Interviewer', text: "That's great to hear. Can you walk me through a challenging project you've worked on?" },
-];
+interface TranscriptItem {
+    speaker: 'Interviewer' | 'You';
+    text: string;
+}
 
 interface InterviewPageProps {
   onLeave: () => void;
@@ -79,19 +83,17 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isMicOn, setIsMicOn] = useState(true);
   
-  const [transcript, setTranscript] = useState(() => {
-    if (interviewQuestions?.theoryQuestions?.length > 0) {
-        return [{ speaker: 'Interviewer', text: interviewQuestions.theoryQuestions[0] }];
-    }
-    return [{ speaker: 'Interviewer', text: 'Thanks for joining today. Can you tell me a bit about yourself?' }];
-  });
+  const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
+  const [sessionStatus, setSessionStatus] = useState<'IDLE' | 'CONNECTING' | 'CONNECTED' | 'ERROR'>('IDLE');
 
   const [timeLeft, setTimeLeft] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const sessionManagerRef = useRef<{ close: () => void } | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [streamLoaded, setStreamLoaded] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isUserSpeaking, setIsUserSpeaking] = useState(false);
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const animationFrameIdRef = useRef<number | null>(null);
   const isSpeakingRef = useRef(false);
@@ -144,64 +146,96 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  // Main effect for media and live session
   useEffect(() => {
     let isMounted = true;
 
     const setupAudioAnalysis = (stream: MediaStream) => {
-      // Don't run if component unmounted or no audio track
       if (!isMounted || !stream.getAudioTracks().length) return;
-
-      // FIX: Cast window to any to allow access to webkitAudioContext for wider browser compatibility.
       const audioContext = new ((window as any).AudioContext || (window as any).webkitAudioContext)();
       audioContextRef.current = audioContext;
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 512;
       const source = audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
-
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
       const checkSpeaking = () => {
-        // Stop if component unmounted
         if (!isMounted) return;
-
-        // If mic is off, ensure speaking state is false
         if (!streamRef.current?.getAudioTracks()[0]?.enabled) {
           if (isSpeakingRef.current) {
             isSpeakingRef.current = false;
-            setIsSpeaking(false);
+            setIsUserSpeaking(false);
           }
           animationFrameIdRef.current = requestAnimationFrame(checkSpeaking);
           return;
         }
-
         analyser.getByteTimeDomainData(dataArray);
         let sum = 0.0;
         for (const value of dataArray) {
-          // Normalize to -1 to 1
           const normalizedValue = (value - 128) / 128.0;
           sum += normalizedValue * normalizedValue;
         }
         const rms = Math.sqrt(sum / dataArray.length);
-        const speaking = rms > 0.03; // Threshold to avoid background noise
+        const speaking = rms > 0.02; 
 
         if (speaking !== isSpeakingRef.current) {
           isSpeakingRef.current = speaking;
-          setIsSpeaking(speaking);
+          setIsUserSpeaking(speaking);
         }
         animationFrameIdRef.current = requestAnimationFrame(checkSpeaking);
       };
-      
       checkSpeaking();
     };
 
-    const getMedia = async () => {
+    const startSession = async (stream: MediaStream) => {
+      setSessionStatus('CONNECTING');
+      const firstQuestion = interviewQuestions?.theoryQuestions?.[0] || 'Can you tell me a bit about yourself?';
+      const interviewerName = getInterviewerDetails(setupData)[0].name;
+
+      const systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Start the interview by greeting the candidate, whose name is ${setupData.candidateName || 'there'}, and then ask the first question: "${firstQuestion}". After that, continue the conversation based on their responses. Keep your responses concise.`;
+      
+      const onTranscriptionUpdate = (item: { speaker: 'Interviewer' | 'You'; text: string }) => {
+        setTranscript(prev => {
+            const newTranscript = [...prev];
+            const lastItem = newTranscript[newTranscript.length - 1];
+            if (lastItem && lastItem.speaker === item.speaker) {
+                lastItem.text = item.text;
+            } else {
+                newTranscript.push(item);
+            }
+            return newTranscript;
+        });
+        if(item.speaker === 'Interviewer') setIsAiSpeaking(true);
+      };
+
+      const onAudioFinished = () => {
+        setIsAiSpeaking(false);
+      }
+      
+      try {
+        sessionManagerRef.current = await initiateLiveSession({
+          stream,
+          systemInstruction,
+          onTranscriptionUpdate,
+          onAudioFinished,
+        });
+        setSessionStatus('CONNECTED');
+      } catch (error) {
+        console.error("Failed to initiate live session:", error);
+        setSessionStatus('ERROR');
+        alert("Could not connect to the interview service. Please try again later.");
+      }
+    };
+    
+    const getMediaAndStart = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         if (isMounted) {
           streamRef.current = stream;
           setStreamLoaded(true);
-          setupAudioAnalysis(stream); // Set up audio analysis
+          setupAudioAnalysis(stream);
+          await startSession(stream);
         }
       } catch (err) {
         console.error("Error accessing media devices.", err);
@@ -209,11 +243,12 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
           alert("Could not access camera and microphone. Please check permissions and try again.");
           setIsCameraOn(false);
           setIsMicOn(false);
+          setSessionStatus('ERROR');
         }
       }
     };
 
-    getMedia();
+    getMediaAndStart();
 
     return () => {
       isMounted = false;
@@ -225,8 +260,9 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
       }
+      sessionManagerRef.current?.close();
     };
-  }, []);
+  }, []); // Run only on mount
 
   useEffect(() => {
     if (streamLoaded && videoRef.current && streamRef.current) {
@@ -240,9 +276,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
 
   const toggleCamera = async () => {
     if (!streamRef.current) return;
-  
     if (isCameraOn) {
-      // Turn camera off
       const videoTracks = streamRef.current.getVideoTracks();
       videoTracks.forEach(track => {
         track.stop();
@@ -250,7 +284,6 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
       });
       setIsCameraOn(false);
     } else {
-      // Turn camera on
       try {
         const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
         const newVideoTrack = videoStream.getVideoTracks()[0];
@@ -281,6 +314,21 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   };
   
   const interviewersDetails = getInterviewerDetails(setupData);
+
+  const getTranscriptStatus = () => {
+    switch(sessionStatus) {
+      case 'CONNECTING':
+        return 'Connecting to interviewer...';
+      case 'CONNECTED':
+        if(transcript.length === 0) return 'Interviewer is ready. The session will begin shortly.';
+        return null; // Don't show anything if transcript is active
+      case 'ERROR':
+        return 'Connection failed. Please try leaving and starting a new session.';
+      default:
+         return 'Initializing...';
+    }
+  }
+  const transcriptStatusMessage = getTranscriptStatus();
 
   return (
     <div className="bg-dark h-screen w-screen flex flex-col text-white font-sans">
@@ -388,10 +436,10 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                 <aside className="w-[280px] bg-slate-800/50 flex flex-col border-l border-slate-700 p-4 gap-4 overflow-y-auto">
                     {interviewersDetails.map((details, index) => (
                         <div key={index} className="flex-shrink-0">
-                           <VideoPlaceholder name={details.name} role={details.role} number={index + 1} />
+                           <VideoPlaceholder name={details.name} role={details.role} number={index + 1} isSpeaking={isAiSpeaking} />
                         </div>
                     ))}
-                    <div className={`w-full aspect-video bg-black rounded-xl relative overflow-hidden border border-slate-700 shadow-lg flex-shrink-0 transition-all duration-300 ${isSpeaking ? 'ring-2 ring-primary ring-offset-2 ring-offset-slate-800' : ''}`}>
+                    <div className={`w-full aspect-video bg-black rounded-xl relative overflow-hidden border border-slate-700 shadow-lg flex-shrink-0 transition-all duration-300 ${isUserSpeaking ? 'ring-2 ring-primary ring-offset-2 ring-offset-slate-800' : ''}`}>
                          {!isCameraOn && <div className="absolute inset-0 bg-slate-900 flex items-center justify-center"><p className="text-gray-400 text-sm">Camera is off</p></div>}
                         <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transition-opacity ${isCameraOn ? 'opacity-100' : 'opacity-0'}`} />
                         <div className="absolute bottom-2 left-2 text-xs bg-black/40 px-2 py-0.5 rounded">
@@ -422,12 +470,12 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                         interviewersDetails.length === 2 ? 'w-full md:w-1/2 max-w-sm' :
                         'w-full md:w-1/3 max-w-sm'
                     }>
-                        <VideoPlaceholder name={details.name} role={details.role} number={index + 1} />
+                        <VideoPlaceholder name={details.name} role={details.role} number={index + 1} isSpeaking={isAiSpeaking} />
                     </div>
                     ))}
                 </div>
                 <div className="flex-1 flex items-center justify-center min-h-0 p-4">
-                    <div className={`w-full max-w-2xl aspect-video bg-black rounded-2xl relative overflow-hidden border border-slate-800 shadow-2xl transition-all duration-300 ${isSpeaking ? 'ring-4 ring-primary ring-offset-4 ring-offset-dark' : ''}`}>
+                    <div className={`w-full max-w-2xl aspect-video bg-black rounded-2xl relative overflow-hidden border border-slate-800 shadow-2xl transition-all duration-300 ${isUserSpeaking ? 'ring-4 ring-primary ring-offset-4 ring-offset-dark' : ''}`}>
                     {!isCameraOn && <div className="absolute inset-0 bg-slate-900 flex items-center justify-center"><p className="text-gray-400">Camera is off</p></div>}
                     <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transition-opacity ${isCameraOn ? 'opacity-100' : 'opacity-0'}`} />
                     
@@ -454,6 +502,11 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                     <h2 className="text-lg font-semibold">Live Transcript</h2>
                 </div>
                 <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                    {transcriptStatusMessage && (
+                      <div className="flex justify-center items-center h-full">
+                        <p className="text-gray-400 text-center">{transcriptStatusMessage}</p>
+                      </div>
+                    )}
                     {transcript.map((item, index) => (
                     <div key={index} className={`flex flex-col ${item.speaker === 'You' ? 'items-end' : 'items-start'}`}>
                         <div className={`rounded-lg px-3 py-2 max-w-[90%] ${item.speaker === 'You' ? 'bg-primary text-white' : 'bg-slate-700'}`}>
