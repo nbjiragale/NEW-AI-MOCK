@@ -87,6 +87,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
+  const [streamLoaded, setStreamLoaded] = useState(false);
 
   // State for coding mode
   const [isCodingMode, setIsCodingMode] = useState(false);
@@ -123,30 +124,22 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // This effect runs on every render to ensure the stream is attached.
-  useEffect(() => {
-    if (streamRef.current && videoRef.current) {
-      if (videoRef.current.srcObject !== streamRef.current) {
-        videoRef.current.srcObject = streamRef.current;
-      }
-    }
-  });
-
-  // This effect runs only once to get the media stream and set up cleanup.
   useEffect(() => {
     let isMounted = true;
-    
+
     const getMedia = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         if (isMounted) {
           streamRef.current = stream;
-          setIsCameraOn(true); // Force a re-render to attach stream
+          setStreamLoaded(true);
         }
       } catch (err) {
         console.error("Error accessing media devices.", err);
         if (isMounted) {
           alert("Could not access camera and microphone. Please check permissions and try again.");
+          setIsCameraOn(false);
+          setIsMicOn(false);
         }
       }
     };
@@ -161,6 +154,12 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (streamLoaded && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [streamLoaded]);
   
   useEffect(() => {
       if(isCodingMode) return;
@@ -174,12 +173,27 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [transcript]);
 
-  const toggleCamera = () => {
-    if (streamRef.current) {
-      const videoTrack = streamRef.current.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !isCameraOn;
-        setIsCameraOn(!isCameraOn);
+  const toggleCamera = async () => {
+    if (!streamRef.current) return;
+  
+    if (isCameraOn) {
+      // Turn camera off
+      const videoTracks = streamRef.current.getVideoTracks();
+      videoTracks.forEach(track => {
+        track.stop();
+        streamRef.current?.removeTrack(track);
+      });
+      setIsCameraOn(false);
+    } else {
+      // Turn camera on
+      try {
+        const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const newVideoTrack = videoStream.getVideoTracks()[0];
+        streamRef.current.addTrack(newVideoTrack);
+        setIsCameraOn(true);
+      } catch (err) {
+        console.error("Error accessing camera.", err);
+        alert("Could not access camera. Please check permissions and try again.");
       }
     }
   };
@@ -266,7 +280,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
                     <div className={`transition-opacity duration-200 ${isQuestionCollapsed ? 'opacity-0' : 'opacity-100'}`}>
                         <div className="p-4 overflow-y-auto h-full">
                             <h3 className="text-lg font-semibold text-primary mb-3">{dummyQuestion.title}</h3>
-                            <p className="text-gray-300 whitespace-pre-wrap text-sm">{dummyQuestion.details}</p>
+                            <p className="text-gray-300 whitespace-pre-wrap text-lg">{dummyQuestion.details}</p>
                         </div>
                     </div>
                 </aside>
