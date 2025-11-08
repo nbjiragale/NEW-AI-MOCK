@@ -78,6 +78,7 @@ interface ControllerParams {
     interviewers: Interviewer[];
     questions: CategorizedQuestions;
     callbacks: ControllerCallbacks;
+    setupData: any;
 }
 
 // --- The Combined Live Controller ---
@@ -98,15 +99,17 @@ export class CombinedLiveController {
     private callbacks: ControllerCallbacks;
     private interviewers: Record<Persona, Interviewer>;
     private questions: CategorizedQuestions;
+    private setupData: any;
     
     private conversationHistory: { speaker: string; text: string }[] = [];
     private sources = new Set<AudioBufferSourceNode>();
     private nextStartTime = 0;
 
-    constructor({ interviewers, questions, callbacks }: ControllerParams) {
+    constructor({ interviewers, questions, callbacks, setupData }: ControllerParams) {
         this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
         this.callbacks = callbacks;
         this.questions = questions;
+        this.setupData = setupData;
         
         this.interviewers = {
             technical: interviewers.find(i => i.role === 'Software Engineer')!,
@@ -196,6 +199,15 @@ export class CombinedLiveController {
         const managerName = this.interviewers.behavioral.name;
         const engineerName = this.interviewers.technical.name;
 
+        const candidateName = this.setupData.candidateName || 'there';
+        const companyName = this.setupData.targetCompany || 'our company';
+
+        const hrExperience = Math.floor(Math.random() * 3) + 4; // 4-6
+        const managerExperience = Math.floor(Math.random() * 3) + 5; // 5-7
+        const engineerExperience = Math.floor(Math.random() * 3) + 6; // 6-8
+
+        const introduction = `you must begin the interview by greeting the candidate, ${candidateName}, by name. Then, introduce the panel. Say something like: "Hi ${candidateName}, welcome! My name is ${name}. I'm an HR Specialist here at ${companyName} and I've been with the company for about ${hrExperience} years. Joining us today are ${managerName}, one of our Hiring Managers who has been with us for ${managerExperience} years, and ${engineerName}, a Senior Engineer on the team who has been here for ${engineerExperience} years."`;
+
         const systemInstruction = `You are ${name}, an expert interviewer. You are part of a panel.
 Your specific role is: ${this.interviewers[persona].role}.
 Here are the questions you are responsible for asking:\n${questionList}
@@ -205,7 +217,7 @@ CRITICAL RULES:
 - After you ask a question, you will become silent and listen to the user's response.
 - CONVERSATION FLOW: Your goal is a natural, flowing conversation. When prompted to speak again, you will get context from the last turn. Based on the candidate's answer, you can either ask a relevant follow-up question to probe deeper, or if satisfied, you can smoothly transition to the next question from your prepared list.
 - You will be prompted with 'CONTEXT_SYNC: ...' before you are asked to speak.
-- If you are ${name} (HR Specialist) and you receive the command 'GREET_CANDIDATE', you must begin the interview by introducing the panel (I'm ${name}, with ${managerName} our Hiring Manager, and ${engineerName} our Senior Engineer) and then immediately asking the very first question from your list. Do not wait for a prompt from the user.
+- If you are ${name} (HR Specialist) and you receive the command 'GREET_CANDIDATE', ${introduction} After introducing everyone, immediately ask the very first question from your list. Do not wait for a prompt from the user.
 `;
         
         return { systemInstruction, voiceName };

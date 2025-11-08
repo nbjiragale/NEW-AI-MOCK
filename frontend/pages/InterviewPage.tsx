@@ -219,6 +219,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
             const controller = new CombinedLiveController({
                 interviewers: interviewersDetails,
                 questions: interviewQuestions,
+                setupData: setupData,
                 callbacks: {
                     onTranscriptionUpdate: (item) => {
                         setActiveInterviewerName(item.speaker);
@@ -247,17 +248,27 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
              const theoryQs = interviewQuestions?.theoryQuestions || [];
              const companyQs = interviewQuestions?.companySpecificQuestions || [];
              const allQuestions = [...theoryQs, ...companyQs];
+             
+             const candidateName = setupData.candidateName || 'there';
              const interviewerName = interviewersDetails?.[0]?.name || 'Interviewer';
+             const interviewerRole = interviewersDetails?.[0]?.role || 'hiring manager';
+             const companyName = setupData.targetCompany || 'our company';
+             const experienceYears = Math.floor(Math.random() * 3) + 4; // 4, 5, or 6
+
+             const intro = `Begin the interview now. First, greet the candidate, ${candidateName}, by name. Then, introduce yourself. Say something like: "Hi ${candidateName}, I'm ${interviewerName}. I'll be interviewing you today. I'm a ${interviewerRole} at ${companyName} and I've been here for about ${experienceYears} years."`;
+             
              let systemInstruction;
              if (allQuestions.length > 0) {
                 const questionList = allQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
-                systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${setupData.candidateName || 'there'}.
+                systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${candidateName}.
                 Here is the list of questions you must ask in order:
                 ${questionList}
                 CRITICAL RULE: Ask only ONE question at a time. After asking a question, you must wait for the candidate to provide a complete answer before you say anything else or move to the next question.
-                Begin the interview now by greeting the candidate and asking the very first question.`;
+                ${intro} After your introduction, immediately ask the very first question from your list.`;
              } else {
-                systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Start the interview by greeting the candidate, whose name is ${setupData.candidateName || 'there'}, and then ask them to tell you a bit about themselves. CRITICAL RULE: Ask only ONE question at a time and wait for their full response.`;
+                systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${candidateName}.
+                ${intro} After your introduction, immediately ask the candidate to tell you a bit about themselves.
+                CRITICAL RULE: Ask only ONE question at a time and wait for their full response.`;
              }
 
             sessionManagerRef.current = await initiateLiveSession({
