@@ -7,7 +7,7 @@ import { initiateLiveSession } from '../services/geminiLiveService';
 
 // Icons
 const PhoneHangUpIcon = () => (
-    <svg xmlns="http://www.w.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 3H8C6.34315 3 5 4.34315 5 6V18C5 19.6569 6.34315 21 8 21H16C17.6569 21 19 19.6569 19 18V6C19 4.34315 17.6569 3 16 3Z" transform="rotate(135 12 12)" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.5 9.5L9.5 14.5M9.5 9.5L14.5 14.5" transform="rotate(135 12 12)" />
     </svg>
@@ -164,10 +164,34 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
 
     const startSession = async (stream: MediaStream) => {
       setSessionStatus('CONNECTING');
-      const firstQuestion = interviewQuestions?.theoryQuestions?.[0] || 'Can you tell me a bit about yourself?';
+      
+      const theoryQs = interviewQuestions?.theoryQuestions || [];
+      const companyQs = interviewQuestions?.companySpecificQuestions || [];
+      const allQuestions = [...theoryQs, ...companyQs];
+
       const interviewerName = interviewersDetails?.[0]?.name || 'Interviewer';
 
-      const systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Start the interview by greeting the candidate, whose name is ${setupData.candidateName || 'there'}, and then ask the first question: "${firstQuestion}". After that, continue the conversation based on their responses. Keep your responses concise.`;
+      let systemInstruction;
+
+      if (allQuestions.length > 0) {
+        const questionList = allQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
+        systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${setupData.candidateName || 'there'}.
+
+Here is the list of questions you must ask in order:
+${questionList}
+
+Your instructions are as follows:
+1.  Start by greeting the candidate warmly.
+2.  Ask the questions from the list one by one, strictly in the given order.
+3.  CRITICAL RULE: Ask only ONE question at a time. After asking a question, you must wait for the candidate to provide a complete answer before you say anything else or move to the next question.
+4.  You may ask one or two short, relevant follow-up questions if the candidate's answer is unclear or incomplete, but then you must proceed to the next question on the list.
+5.  Keep your own speech concise and professional. Avoid long monologues.
+6.  After the last question, thank the candidate for their time and conclude the interview.
+
+Begin the interview now by greeting the candidate and asking the very first question from the list.`;
+      } else {
+        systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Start the interview by greeting the candidate, whose name is ${setupData.candidateName || 'there'}, and then ask them to tell you a bit about themselves. After that, continue the conversation by asking relevant interview questions based on their responses. CRITICAL RULE: Ask only ONE question at a time and wait for their full response. Keep your own speech concise.`;
+      }
       
       const onTranscriptionUpdate = (item: { speaker: 'Interviewer' | 'You'; text: string }) => {
         setTranscript(prev => {

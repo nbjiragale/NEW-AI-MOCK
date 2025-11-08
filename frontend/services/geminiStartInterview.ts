@@ -186,6 +186,8 @@ Session Details:
 2. Theory Questions: Conceptual questions based on the profile.
 3. Hands-On Questions: Practical problems or coding challenges. For each coding challenge, provide a title and a detailed description.
 
+IMPORTANT: Each question must be a single, focused query. Do NOT create compound questions that ask multiple things at once. For example, instead of asking "What is the difference between an interface and an abstract class, and when would you use each?", create two separate questions.
+
 Return the response in a structured JSON format adhering to the provided schema. Ensure the questions are appropriate for the candidate's experience level.`;
 
         return prompt;
