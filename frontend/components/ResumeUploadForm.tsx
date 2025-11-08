@@ -239,7 +239,7 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
                     </>
                 )}
                 
-                <FormInput label="Target Company / Interview Style (Optional)" name="targetCompany" type="text" placeholder="e.g., FAANG, Startup, Service-based" defaultValue={initialData?.targetCompany}/>
+                <FormInput label="Target Company(Optional)" name="targetCompany" type="text" placeholder="e.g., TCS, Google, KPMG" defaultValue={initialData?.targetCompany}/>
 
                 <div className="pt-4">
                     <button type="submit" className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!canSubmit || isLoading}>
