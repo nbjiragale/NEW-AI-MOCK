@@ -40,7 +40,7 @@ export const checkDetailsConsistency = async (setupData: any): Promise<{ isConsi
             },
             reasoning: {
                 type: Type.STRING,
-                description: "A brief explanation for the consistency check. If inconsistent, explain why (e.g., 'The topics do not match the specified job role.').",
+                description: "A brief, friendly explanation for the consistency check. If inconsistent, explain why (e.g., 'The topics selected don't seem to align with a typical role for a ...').",
             },
         },
         required: ["isConsistent", "reasoning"],
@@ -56,12 +56,13 @@ export const checkDetailsConsistency = async (setupData: any): Promise<{ isConsi
     try {
         const apiCall = () => ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `Analyze the following candidate profile for logical consistency, specifically between the 'Role' and the 'Main Topics to Focus On'. For example, a 'Java Developer' role is inconsistent with 'C++' as a main topic. 
-        
+            contents: `Act as a helpful setup assistant for a mock interview platform. Your task is to quickly check if the user's chosen job role and practice topics make sense together. For example, a 'Java Developer' preparing for 'C++ fundamentals' would be an inconsistent combination.
+
+Here are the user's selections:
 - Role: ${setupData.role}
-- Main Topics to Focus On: ${setupData.topics}
-        
-Is this combination consistent for a job interview preparation? Provide a boolean response and a brief reason.`,
+- Topics: ${setupData.topics}
+
+Based on this, does this seem like a logical and consistent set of topics for someone in this role? Please provide a simple boolean 'isConsistent' and a short, friendly 'reasoning'.`,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: schema,
@@ -114,7 +115,11 @@ export const validateCompany = async (companyName: string): Promise<{ companyExi
     try {
         const apiCall = () => ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `Please verify if "${companyName}" is a real, publicly known company. Consider common typos or variations. Provide a boolean response and a brief reason.`,
+            contents: `I'm an assistant helping a user set up a mock interview. They've entered a company name, and I need a quick check to see if it's a real company. Please consider common typos.
+
+Company Name: "${companyName}"
+
+Is this a known company? Please respond with a simple 'companyExists' boolean and a short, helpful 'reasoning'. For instance, if you're unsure, you could say 'This might be a smaller or private company, or a possible typo.'`,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: schema,
@@ -210,31 +215,42 @@ export const generateInterviewQuestions = async (setupData: any) => {
     
         // --- Handle Practice Mode separately ---
         if (setupData.type === 'Practice Mode') {
-            prompt = `You are an AI practice partner. Your goal is to help a user prepare for an interview. Generate a set of questions based on the following session details.
-
-Session Details:
-- Interview Type: ${setupData.interviewType}`;
-    
             let questionFocus = '';
             switch(setupData.interviewType) {
                 case 'HR':
-                    questionFocus = `Generate questions focusing on cultural fit, past experiences, and career goals. Your tone should be professional but welcoming. Avoid technical questions. For any 'handsOnQuestions', create a simple workplace scenario and categorize it as 'Other'.`;
+                    questionFocus = `The questions should focus on cultural fit, past experiences, and career goals. The tone should be professional but welcoming. No technical questions, please. For any 'handsOnQuestions', let's create a simple workplace scenario and categorize it as 'Other'.`;
                     break;
                 case 'Behavioral/Managerial':
-                    questionFocus = `Generate behavioral and situational questions (STAR method). Focus on leadership, teamwork, and problem-solving scenarios. Avoid coding challenges. For any 'handsOnQuestions', create a complex project management scenario and categorize it as 'Other'.`;
+                    questionFocus = `The questions should be behavioral and situational, encouraging the STAR method. Let's focus on leadership, teamwork, and problem-solving scenarios. No coding challenges. For any 'handsOnQuestions', we can create a complex project management scenario and categorize it as 'Other'.`;
                     break;
                 default: // Technical, Combined
-                    questionFocus = `Generate a mix of conceptual theory questions and practical hands-on challenges based on the topic. Start with fundamentals and gradually increase difficulty. For the hands-on challenges, you MUST categorize them into 'DSA', 'SQL', or 'Other'. If the topic is 'SQL', create an SQL question. If the topic is 'DSA', 'algorithms', or 'data structures', create a coding challenge. Otherwise, create a practical question and categorize it as 'Other'.`;
+                    questionFocus = `The questions should be a mix of conceptual theory and practical hands-on challenges based on the topic. Let's start with fundamentals and gradually increase difficulty. For the hands-on challenges, please categorize them into 'DSA', 'SQL', or 'Other'. For topics like 'SQL', create an SQL question. For 'DSA' or 'algorithms', create a coding challenge. Otherwise, a practical question categorized as 'Other' would be perfect.`;
                     break;
             }
 
             if (setupData.practiceType === 'By Topic Name') {
-                prompt += `\n- Topic: ${setupData.topicName}`;
-                prompt += `\n\nYour Task: Generate a series of questions related to this topic. ${questionFocus}`;
+                prompt = `You're an expert interview coach. A user wants to do a focused practice session on a specific topic. Your goal is to create a realistic and helpful set of questions for them.
+
+Session Details:
+- Interview Type: ${setupData.interviewType}
+- Topic for Practice: ${setupData.topicName}
+
+Your Task:
+Craft a set of interview questions that dive deep into this topic. ${questionFocus}`;
             } else if (setupData.practiceType === 'Build Confidence') {
                 const reflections = setupData.confidenceAnswers.map((item: { question: string, answer: string }) => `- ${item.question}\n  - User's Answer: ${item.answer}`).join('\n');
-                prompt += `\n\nUser's Reflections to Build Confidence On:\n${reflections}`;
-                prompt += `\n\nYour Task: The user wants to build confidence. Based on their reflections, generate a set of questions that gently challenge these areas. Your tone should be encouraging and supportive. Start with easier questions to build momentum, and then introduce slightly more complex scenarios. ${questionFocus}`;
+                prompt = `You're an empathetic and encouraging interview coach. A user has shared some areas where they lack confidence and wants your help to practice and improve. Your goal is to build them up, not tear them down.
+
+User's Reflections:
+${reflections}
+
+Your Task:
+Based on the user's reflections, create a supportive practice session. Start with a few foundational questions to build their confidence, then gently introduce questions that touch on their stated areas of weakness. Your tone should always be positive and constructive. ${questionFocus}`;
+            } else {
+                 prompt = `You're an expert interview coach preparing a custom practice session.
+                 
+Your Task:
+The user has provided a specific list of questions. Your only job is to format these questions correctly for the interview session within the 'theoryQuestions' array. Do not generate any new questions. For 'handsOnQuestions', please create a single, simple, general problem-solving scenario and categorize it as 'Other'.`;
             }
             
         // --- Handle Standard Interview Modes ---
@@ -251,54 +267,58 @@ Session Details:
     
             switch (setupData.interviewType) {
                 case 'Combined':
-                    persona = 'You are an AI system controlling a panel of three interviewers: a Senior Engineer, a Hiring Manager, and an HR Specialist. Your task is to generate distinct sets of questions appropriate for each of them based on the candidate profile.';
-                    questionInstructions = `Generate questions for a 'Combined' interview:
-1.  **For the Software Engineer:** Populate \`technicalQuestions\` with conceptual questions.
-2.  **For the Hiring Manager:** Populate \`behavioralQuestions\` with situational questions that probe leadership, teamwork, and problem-solving skills using the STAR method.
-3.  **For the HR Specialist:** Populate \`hrQuestions\` with questions about motivation, cultural fit, and career goals, considering the target company if provided.
-4.  **Hands-On Challenges:** For \`handsOnQuestions\`, you MUST generate exactly THREE practical problems, one for each category:
-    - **One DSA Question:** Create a classic data structure or algorithm coding problem. This is for the Software Engineer. Categorize it as 'DSA'. If it is a known LeetCode problem, you MUST provide its URL slug in the \`leetcodeSlug\` field (e.g., "two-sum"). Otherwise, set \`leetcodeSlug\` to null.
-    - **One SQL Question:** Create a database query problem. This is for the Software Engineer. Provide a simple schema and the task. Categorize it as 'SQL'. Set \`leetcodeSlug\` to null.
-    - **One 'Other' Question:** Create a practical, scenario-based problem that a Hiring Manager might ask to assess problem-solving (e.g., system design, process improvement). Categorize it as 'Other'. Set \`leetcodeSlug\` to null.
-    These questions should be inspired by the candidate's profile and key topics where applicable.`;
+                    persona = 'Imagine you are the coordinator for a panel interview. Your job is to script the entire interview for three different people: a meticulous Senior Engineer, a sharp Hiring Manager, and a friendly HR Specialist. You need to create distinct sets of questions that perfectly match each of their roles and perspectives.';
+                    // Fix: Escaped backticks around property names to prevent them from being parsed as template literals.
+                    questionInstructions = `Let's design the flow for this 'Combined' interview. Here's the plan:
+
+1.  **For the Software Engineer:** Let's arm them with some solid conceptual questions for the \\\`technicalQuestions\\\` list.
+2.  **For the Hiring Manager:** We need some great behavioral questions for \\\`behavioralQuestions\\\`. Think of situations that would reveal their leadership, teamwork, and problem-solving style. The STAR method is key here.
+3.  **For the HR Specialist:** For the \\\`hrQuestions\\\`, let's focus on cultural fit, motivation, and their interest in the company.
+4.  **Hands-On Challenges (\\\`handsOnQuestions\\\`):** This is crucial. We need exactly three practical problems:
+    - **A DSA Challenge:** A classic algorithm or data structure problem. This is for the Engineer. Please categorize it as 'DSA'. If it's a known LeetCode problem, *please* find its URL slug and add it to \\\`leetcodeSlug\\\` (e.g., 'two-sum'). If not, just leave \\\`leetcodeSlug\\\` as null.
+    - **An SQL Challenge:** A practical database query problem, maybe with a small schema to work from. Also for the Engineer. Categorize as 'SQL'. \\\`leetcodeSlug\\\` should be null.
+    - **A Scenario Challenge:** A high-level problem-solving scenario a Hiring Manager would appreciate (e.g., 'How would you design X?', 'How would you improve process Y?'). Categorize this one as 'Other'. \\\`leetcodeSlug\\\` should be null.`;
                     break;
                 case 'HR':
-                    persona = 'You are an experienced and empathetic HR professional conducting an initial screening interview. Your goal is to assess the candidate\'s personality, motivation, cultural fit, and basic qualifications. You should be welcoming and aim to understand the candidate\'s career aspirations and how they align with the company\'s values.';
-                    questionInstructions = `Generate questions suitable for a comprehensive HR screening round:
-1.  **Company-Specific & Motivation:** 3-4 questions to gauge their research on the company, their genuine interest in the role, and what attracts them to our mission.
-2.  **Career & Background:** 4-5 questions exploring their resume, career journey, key achievements, and reasons for leaving previous roles.
-3.  **Hands-On Scenarios:** For \`handsOnQuestions\`, generate 0-1 simple workplace scenario questions and categorize them as 'Other'.
-Important: Ensure all questions are open-ended. DO NOT generate technical or coding problems.`;
+                    persona = "Step into the shoes of a warm and perceptive HR professional. You're conducting the first-round interview. Your main goal is to get to know the candidate, understand their motivations, and see if they would be a good fit for the company culture. You want them to feel comfortable and open up.";
+                    questionInstructions = `Let's prepare for a comprehensive HR screening round. Here's what we need:
+
+1.  **Motivation & Company Fit:** 3-4 questions to see if they've done their homework on the company and are genuinely interested in the role.
+2.  **Background & Experience:** 4-5 questions to walk through their resume, explore their career choices, and understand their key accomplishments.
+3.  **Hands-On Scenarios:** For \\\`handsOnQuestions\\\`, let's add one simple workplace scenario question and categorize it as 'Other'.
+Just a reminder, let's keep all questions open-ended and avoid anything deeply technical.`;
                     break;
     
                 case 'Behavioral/Managerial':
-                    persona = 'You are a seasoned Hiring Manager for a fast-paced team. You are looking for a candidate who not only has the right experience but also demonstrates strong leadership, problem-solving, and collaborative skills. Your interview style is probing and based on real-world scenarios. You want to understand *how* a candidate has handled situations in the past.';
-                    questionInstructions = `Generate behavioral and situational questions designed to be answered using the STAR method (Situation, Task, Action, Result):
-1.  **Leadership & Influence:** 3-4 questions about leading projects, mentoring others, and influencing decisions.
-2.  **Conflict & Problem Solving:** 3-4 questions about resolving disagreements, handling difficult stakeholders, and overcoming challenges.
-3.  **Hands-On Scenarios:** For the \`handsOnQuestions\`, generate 1-2 complex scenario-based problems about team or project management, and categorize them as 'Other'.
-Important: Frame questions with 'Tell me about a time when...' or 'Describe a situation where...'. DO NOT generate technical or coding problems.`;
+                    persona = "You are a sharp, experienced Hiring Manager. You've seen it all. You're looking for a top performer for your team. You need to dig deep into the candidate's past experiences to see how they handle real-world challenges. Your questions should be scenario-based, pushing them to provide concrete examples of their skills.";
+                    questionInstructions = `We need a set of insightful behavioral questions that encourage the STAR method (Situation, Task, Action, Result). Let's structure it like this:
+
+1.  **Leadership & Influence:** 3-4 questions about times they've led projects, mentored others, or influenced decisions.
+2.  **Conflict & Problem Solving:** 3-4 questions about how they've handled disagreements, difficult stakeholders, and overcome project hurdles.
+3.  **Hands-On Scenarios:** For \\\`handsOnQuestions\\\`, let's create 1-2 complex scenarios about team or project management and categorize them as 'Other'.
+Framing these with 'Tell me about a time when...' is a great approach. No technical deep-dives for this one.`;
                     break;
     
                 case 'Technical':
                 default:
-                    persona = 'You are a Senior Engineer and a key technical interviewer for your team. You value clear communication, strong fundamentals, and a practical approach to problem-solving. Your goal is to accurately assess the candidate\'s technical depth, their ability to write clean and efficient code, and how they articulate their thought process.';
-                    questionInstructions = `Generate a balanced set of technical interview questions for the specified profile:
-1.  **Conceptual Deep Dive (Theory):** 4-5 questions that test fundamental and advanced concepts related to the specified topics.
-2.  **Hands-On Challenges:** For \`handsOnQuestions\`, you MUST generate exactly THREE practical problems, one for each category:
-    - **One DSA Question:** Create a classic data structure or algorithm coding problem. Categorize it as 'DSA'. If it is a known LeetCode problem, you MUST provide its URL slug in the \`leetcodeSlug\` field (e.g., "two-sum"). Otherwise, set \`leetcodeSlug\` to null.
-    - **One SQL Question:** Create a database query problem. Provide a simple schema and the task. Categorize it as 'SQL'. Set \`leetcodeSlug\` to null.
-    - **One 'Other' Question:** Create a practical problem related to general programming concepts like Object-Oriented Programming (OOPS), functional programming (e.g., Java streams), or concurrency. Categorize it as 'Other'. Set \`leetcodeSlug\` to null.
-    These questions should be inspired by the candidate's profile and key topics where applicable.`;
+                    persona = "Put on the hat of a Senior Engineer who is passionate about technical excellence. You need to verify the candidate's skills and problem-solving abilities. Your questions should be precise, test their fundamental knowledge, and assess how they approach complex technical problems. You value clarity and a well-reasoned thought process.";
+                    // Fix: Escaped backticks around property names to prevent them from being parsed as template literals.
+                    questionInstructions = `Let's build a balanced technical interview. Here's the plan:
+
+1.  **Conceptual Deep Dive (\\\`theoryQuestions\\\`):** Let's have 4-5 questions that really test their fundamental and advanced knowledge on the specified topics.
+2.  **Hands-On Challenges (\\\`handsOnQuestions\\\`):** This part is key. We need exactly three practical problems:
+    - **A DSA Challenge:** A classic data structure or algorithm problem. Please categorize it as 'DSA'. If it's a known LeetCode problem, find its URL slug for the \\\`leetcodeSlug\\\` field (e.g., 'two-sum'). Otherwise, \\\`leetcodeSlug\\\` should be null.
+    - **An SQL Challenge:** A solid database query problem. Providing a simple schema would be helpful. Categorize it as 'SQL', with \\\`leetcodeSlug\\\` as null.
+    - **An 'Other' Challenge:** A practical problem related to general programming, like Object-Oriented principles, functional programming, or concurrency. Let's categorize this as 'Other', with \\\`leetcodeSlug\\\` as null.`;
                     break;
             }
     
-            prompt = `${persona}\n\nBased on the following candidate profile, generate a set of interview questions.\n\n${profile}\n\n${questionInstructions}`;
+            prompt = `${persona}\n\nBased on the following candidate profile, please help me generate a set of interview questions.\n\n${profile}\n\n${questionInstructions}`;
         }
     
-        prompt += `\n\nIMPORTANT: Each question must be a single, focused query. Do NOT create compound questions that ask multiple things at once. For example, instead of asking "What is the difference between an interface and an abstract class, and when would you use each?", create two separate questions.
-    
-    Return the response in a structured JSON format adhering to the provided schema. Ensure the questions are appropriate for the candidate's experience level.`;
+        prompt += `\n\nOne last thing, and this is important: please make sure every question is a single, focused query. Avoid compound questions. For instance, instead of "Tell me about X and Y", ask about X, then ask about Y as a separate question. This makes the interview flow much better.
+
+Now, please provide the complete set of questions in the required JSON format, keeping the candidate's experience level in mind.`;
     
         return prompt;
     };
