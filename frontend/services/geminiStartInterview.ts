@@ -183,14 +183,18 @@ export const generateInterviewQuestions = async (setupData: any) => {
             }),
             handsOnQuestions: {
                 type: Type.ARRAY,
-                description: "A list of 1-2 practical, scenario-based, or coding problems. For coding problems, provide a title and a detailed description.",
+                description: "A list of 1-2 practical, scenario-based, or coding problems.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
                         title: { type: Type.STRING, description: "The title of the hands-on problem." },
                         description: { type: Type.STRING, description: "A detailed description of the problem, including inputs, outputs, and constraints." },
+                        category: {
+                            type: Type.STRING,
+                            description: "The category of the question. Must be one of: 'DSA', 'SQL', or 'Other'."
+                        }
                     },
-                    required: ["title", "description"],
+                    required: ["title", "description", "category"],
                 },
             },
         },
@@ -210,13 +214,13 @@ Session Details:
             let questionFocus = '';
             switch(setupData.interviewType) {
                 case 'HR':
-                    questionFocus = 'Generate questions focusing on cultural fit, past experiences, and career goals. Your tone should be professional but welcoming. Avoid technical questions.';
+                    questionFocus = `Generate questions focusing on cultural fit, past experiences, and career goals. Your tone should be professional but welcoming. Avoid technical questions. For any 'handsOnQuestions', create a simple workplace scenario and categorize it as 'Other'.`;
                     break;
                 case 'Behavioral/Managerial':
-                    questionFocus = 'Generate behavioral and situational questions (STAR method). Focus on leadership, teamwork, and problem-solving scenarios. Avoid coding challenges.';
+                    questionFocus = `Generate behavioral and situational questions (STAR method). Focus on leadership, teamwork, and problem-solving scenarios. Avoid coding challenges. For any 'handsOnQuestions', create a complex project management scenario and categorize it as 'Other'.`;
                     break;
                 default: // Technical, Combined
-                    questionFocus = 'Generate a mix of conceptual theory questions and practical hands-on coding challenges based on the topic. Start with fundamentals and gradually increase difficulty.';
+                    questionFocus = `Generate a mix of conceptual theory questions and practical hands-on challenges based on the topic. Start with fundamentals and gradually increase difficulty. For the hands-on challenges, you MUST categorize them into 'DSA', 'SQL', or 'Other'. If the topic is 'SQL', create an SQL question. If the topic is 'DSA', 'algorithms', or 'data structures', create a coding challenge. Otherwise, create a practical question and categorize it as 'Other'.`;
                     break;
             }
 
@@ -245,17 +249,18 @@ Session Details:
                 case 'Combined':
                     persona = 'You are an AI system controlling a panel of three interviewers: a Senior Engineer, a Hiring Manager, and an HR Specialist. Your task is to generate distinct sets of questions appropriate for each of them based on the candidate profile.';
                     questionInstructions = `Generate questions for a 'Combined' interview:
-1.  **For the Software Engineer:** Populate \`technicalQuestions\` with conceptual questions and \`handsOnQuestions\` with a practical coding challenge, all related to the candidate's topics and experience.
+1.  **For the Software Engineer:** Populate \`technicalQuestions\` with conceptual questions.
 2.  **For the Hiring Manager:** Populate \`behavioralQuestions\` with situational questions that probe leadership, teamwork, and problem-solving skills using the STAR method.
-3.  **For the HR Specialist:** Populate \`hrQuestions\` with questions about motivation, cultural fit, and career goals, considering the target company if provided.`;
+3.  **For the HR Specialist:** Populate \`hrQuestions\` with questions about motivation, cultural fit, and career goals, considering the target company if provided.
+4.  **Hands-On Challenge:** For \`handsOnQuestions\`, generate 1 practical problem. You MUST categorize this question into 'DSA', 'SQL', or 'Other'. If 'Key Topics' include 'SQL', generate an SQL problem. If topics include 'DSA', generate a coding problem. Otherwise, create a relevant practical scenario. The question should be assigned to the most appropriate interviewer (e.g., DSA for Engineer, a scenario for Manager).`;
                     break;
                 case 'HR':
                     persona = 'You are an experienced and empathetic HR professional conducting an initial screening interview. Your goal is to assess the candidate\'s personality, motivation, cultural fit, and basic qualifications. You should be welcoming and aim to understand the candidate\'s career aspirations and how they align with the company\'s values.';
                     questionInstructions = `Generate questions suitable for a comprehensive HR screening round:
 1.  **Company-Specific & Motivation:** 3-4 questions to gauge their research on the company, their genuine interest in the role, and what attracts them to our mission.
 2.  **Career & Background:** 4-5 questions exploring their resume, career journey, key achievements, and reasons for leaving previous roles.
-3.  **Behavioral & Situational:** 2-3 questions about teamwork, handling pressure, and workplace communication style.
-Important: Ensure all questions are open-ended. DO NOT generate technical or coding problems. HandsOnQuestions should contain 0-1 simple workplace scenario questions.`;
+3.  **Hands-On Scenarios:** For \`handsOnQuestions\`, generate 0-1 simple workplace scenario questions and categorize them as 'Other'.
+Important: Ensure all questions are open-ended. DO NOT generate technical or coding problems.`;
                     break;
     
                 case 'Behavioral/Managerial':
@@ -263,8 +268,7 @@ Important: Ensure all questions are open-ended. DO NOT generate technical or cod
                     questionInstructions = `Generate behavioral and situational questions designed to be answered using the STAR method (Situation, Task, Action, Result):
 1.  **Leadership & Influence:** 3-4 questions about leading projects, mentoring others, and influencing decisions.
 2.  **Conflict & Problem Solving:** 3-4 questions about resolving disagreements, handling difficult stakeholders, and overcoming challenges.
-3.  **Teamwork & Collaboration:** 2-3 questions about their role in a team and contributing to team success.
-4.  **Hands-On Scenarios:** For the HandsOnQuestions, generate 1-2 complex scenario-based problems about team or project management.
+3.  **Hands-On Scenarios:** For the \`handsOnQuestions\`, generate 1-2 complex scenario-based problems about team or project management, and categorize them as 'Other'.
 Important: Frame questions with 'Tell me about a time when...' or 'Describe a situation where...'. DO NOT generate technical or coding problems.`;
                     break;
     
@@ -272,9 +276,11 @@ Important: Frame questions with 'Tell me about a time when...' or 'Describe a si
                 default:
                     persona = 'You are a Senior Engineer and a key technical interviewer for your team. You value clear communication, strong fundamentals, and a practical approach to problem-solving. Your goal is to accurately assess the candidate\'s technical depth, their ability to write clean and efficient code, and how they articulate their thought process.';
                     questionInstructions = `Generate a balanced set of technical interview questions for the specified profile:
-1.  **Company-Specific / Stack-Relevant:** 2-3 questions that might relate to the target company's known technology stack or business domain.
-2.  **Conceptual Deep Dive (Theory):** 4-5 questions that test fundamental and advanced concepts related to the specified topics.
-3.  **Hands-On Coding Challenge:** 1 challenging, practical coding problem that requires not just a solution, but also a discussion of trade-offs and optimizations. Provide a clear title and a detailed description with examples.`;
+1.  **Conceptual Deep Dive (Theory):** 4-5 questions that test fundamental and advanced concepts related to the specified topics.
+2.  **Hands-On Challenge:** For \`handsOnQuestions\`, generate 1 challenging, practical problem. You MUST categorize this question into 'DSA', 'SQL', or 'Other'.
+    - If 'Key Topics' include 'SQL' or 'Databases', categorize it as 'SQL' and provide a schema and a query to write.
+    - If 'Key Topics' include 'Data Structures' or 'Algorithms', categorize it as 'DSA' and provide a classic coding problem.
+    - For other topics (e.g., 'Java streams', 'OOPS'), categorize it as 'Other' and provide a practical scenario question.`;
                     break;
             }
     

@@ -84,24 +84,16 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   // State for coding mode
   const [isCodingMode, setIsCodingMode] = useState(false);
   const [isQuestionCollapsed, setIsQuestionCollapsed] = useState(false);
-  const [code, setCode] = useState("/* Write your code here */");
+  const [code, setCode] = useState("");
   const [fontSize, setFontSize] = useState(14);
-  const [activeTab, setActiveTab] = useState('DSA');
-  const tabs = ['DSA', 'SQL', 'Other'];
   
-  const [codingQuestion, setCodingQuestion] = useState(() => {
-    if (interviewQuestions?.handsOnQuestions?.length > 0) {
-        return {
-            title: interviewQuestions.handsOnQuestions[0].title,
-            details: interviewQuestions.handsOnQuestions[0].description,
-        };
-    }
-    return {
-        title: 'Find the Duplicate Number',
-        details: 'Given an array of integers `nums` containing `n + 1` integers where each integer is in the range `[1, n]` inclusive.\n\nThere is only one repeated number in `nums`, return this repeated number.\n\nYou must solve the problem without modifying the array `nums` and using only constant extra space.'
-    };
-  });
+  const [handsOnQuestions, setHandsOnQuestions] = useState<any[]>([]);
+  const [activeHandsOnQuestion, setActiveHandsOnQuestion] = useState<any>(null);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>('');
 
+  const hasHandsOnQuestions = handsOnQuestions && handsOnQuestions.length > 0;
+  const canShowHandsOnButton = (setupData?.interviewType === 'Technical' || setupData?.interviewType === 'Combined') && hasHandsOnQuestions;
 
   useEffect(() => {
     if (setupData?.duration) {
@@ -110,7 +102,17 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
         setTimeLeft(durationMinutes * 60);
       }
     }
-  }, [setupData]);
+    const hsQuestions = interviewQuestions?.handsOnQuestions || [];
+    if (hsQuestions.length > 0) {
+        setHandsOnQuestions(hsQuestions);
+        const questionCategories = [...new Set(hsQuestions.map((q: any) => q.category))] as string[];
+        setAvailableCategories(questionCategories);
+
+        const firstQuestion = hsQuestions[0];
+        setActiveHandsOnQuestion(firstQuestion);
+        setActiveCategory(firstQuestion.category);
+    }
+  }, [setupData, interviewQuestions]);
 
   useEffect(() => {
     if (timeLeft <= 0) return;
@@ -359,6 +361,21 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   }
   const transcriptStatusMessage = getTranscriptStatus();
 
+  const handleCategoryClick = (category: string) => {
+      setActiveCategory(category);
+      const questionForCategory = handsOnQuestions.find(q => q.category === category);
+      setActiveHandsOnQuestion(questionForCategory);
+  };
+
+  const getPlaceholderForCategory = () => {
+    switch(activeCategory) {
+        case 'SQL': return "Write your SQL query here...";
+        case 'Other': return "Write your solution/explanation here...";
+        case 'DSA':
+        default: return "Write your code here...";
+    }
+  }
+
   return (
     <div className="bg-dark h-screen w-screen flex flex-col text-white font-sans">
       <header className="p-4 border-b border-slate-800 flex-shrink-0">
@@ -371,23 +388,26 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                 <button onClick={() => setIsCodingMode(false)} className="px-3 py-2 text-sm font-semibold bg-blue-600 rounded-md hover:bg-blue-500 transition-colors text-white">
                     Back to the call
                 </button>
-                <div className="flex items-center border border-slate-700 rounded-md p-0.5">
-                    {tabs.map(tab => (
-                        <button 
-                            key={tab} 
-                            onClick={() => setActiveTab(tab)}
-                            className={`px-4 py-1.5 text-sm rounded-md transition-colors ${activeTab === tab ? 'bg-slate-700 text-white' : 'text-gray-400 hover:bg-slate-800'}`}
-                        >
-                            {tab}
-                        </button>
-                    ))}
-                </div>
+                {availableCategories.length > 0 && (
+                    <div className="flex items-center border border-slate-700 rounded-md p-0.5">
+                        {availableCategories.map(cat => (
+                            <button 
+                                key={cat} 
+                                onClick={() => handleCategoryClick(cat)}
+                                className={`px-4 py-1.5 text-sm rounded-md transition-colors ${activeCategory === cat ? 'bg-slate-700 text-white' : 'text-gray-400 hover:bg-slate-800'}`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
         ) : (
             <>
                 <div className="flex-1"></div>
                 <div className="flex-1 flex justify-center">
-                    <div className="relative group">
+                   {canShowHandsOnButton && (
+                     <div className="relative group">
                         <button 
                         onClick={() => setIsCodingMode(true)}
                         className="px-4 py-2 text-sm font-mono bg-slate-800 rounded-md hover:bg-slate-700 transition-colors text-gray-300 border border-slate-700"
@@ -399,6 +419,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                         Hands-On
                         </div>
                     </div>
+                   )}
                 </div>
             </>
         )}
@@ -419,12 +440,14 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                     <button onClick={() => setIsQuestionCollapsed(!isQuestionCollapsed)} className="absolute top-1/2 -translate-y-1/2 -right-3.5 z-10 w-7 h-7 bg-slate-700 hover:bg-primary rounded-full flex items-center justify-center transition-colors">
                         <span className="font-bold">{isQuestionCollapsed ? '>' : '<'}</span>
                     </button>
-                    <div className={`transition-opacity duration-200 ${isQuestionCollapsed ? 'opacity-0' : 'opacity-100'}`}>
-                        <div className="p-4 overflow-y-auto h-full">
-                            <h3 className="text-lg font-semibold text-primary mb-3">{codingQuestion.title}</h3>
-                            <p className="text-gray-300 whitespace-pre-wrap text-lg">{codingQuestion.details}</p>
-                        </div>
-                    </div>
+                    {activeHandsOnQuestion && (
+                      <div className={`transition-opacity duration-200 ${isQuestionCollapsed ? 'opacity-0' : 'opacity-100'}`}>
+                          <div className="p-4 overflow-y-auto h-full">
+                              <h3 className="text-lg font-semibold text-primary mb-3">{activeHandsOnQuestion.title}</h3>
+                              <p className="text-gray-300 whitespace-pre-wrap text-lg">{activeHandsOnQuestion.description}</p>
+                          </div>
+                      </div>
+                    )}
                 </aside>
 
                 {/* Editor Panel */}
@@ -439,10 +462,10 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                         onChange={e => setCode(e.target.value)} 
                         style={{ fontSize: `${fontSize}px` }}
                         className="flex-1 w-full bg-transparent p-4 font-mono focus:outline-none resize-none"
-                        placeholder="Write your code here..."
+                        placeholder={getPlaceholderForCategory()}
                     />
                      <div className="flex-shrink-0 flex items-center gap-4 p-3 border-t border-slate-700">
-                        {activeTab === 'DSA' && (
+                        {activeCategory === 'DSA' && (
                             <a
                                 href="https://leetcode.com/problems/find-the-duplicate-number/"
                                 target="_blank"
