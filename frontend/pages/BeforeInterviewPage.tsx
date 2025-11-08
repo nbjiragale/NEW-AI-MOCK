@@ -43,6 +43,18 @@ const interviewerNames = [
   'Avery Anderson', 'Scarlett Thomas', 'Chloe Jackson', 'Victoria White', 'Grace Harris'
 ];
 
+const interviewTips = [
+  "Research the company and the role thoroughly before the interview.",
+  "Prepare using the STAR method (Situation, Task, Action, Result) for behavioral questions.",
+  "Have a few insightful questions ready to ask your interviewer.",
+  "Practice your answers out loud to build confidence and fluency.",
+  "Dress professionally, even for a remote interview.",
+  "Ensure your internet connection and audio/video are working correctly beforehand.",
+  "Listen carefully to the question before you start answering.",
+  "Don't be afraid to take a moment to think before you speak.",
+  "End the interview on a positive note by thanking the interviewer for their time."
+];
+
 const getRandomNames = (count: number): string[] => {
   const shuffled = [...interviewerNames].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, count);
@@ -80,6 +92,7 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
     const [message, setMessage] = useState('');
     const [countdown, setCountdown] = useState(10);
     const [interviewerDetails, setInterviewerDetails] = useState<any[] | null>(null);
+    const [currentTipIndex, setCurrentTipIndex] = useState(0);
     const generatedQuestionsRef = useRef<any>(null);
     const processingStateRef = useRef({ hasStarted: false });
 
@@ -98,6 +111,21 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
             document.title = 'AI Mock Interview';
         }
     }, [stage, countdown, onStartInterview, interviewerDetails]);
+
+    useEffect(() => {
+        let tipInterval: NodeJS.Timeout | null = null;
+        if (stage === 'generating_questions') {
+            tipInterval = setInterval(() => {
+                setCurrentTipIndex(prevIndex => (prevIndex + 1) % interviewTips.length);
+            }, 4000); // Change tip every 4 seconds
+        }
+
+        return () => {
+            if (tipInterval) {
+                clearInterval(tipInterval);
+            }
+        };
+    }, [stage]);
 
 
     const startProcess = async (forceCompany = false) => {
@@ -188,7 +216,7 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
                 ];
                 return (
                     <>
-                        <h2 className="text-3xl font-bold text-white mb-4">Preparing your session...</h2>
+                        <h2 className="text-3xl font-bold text-white mb-4 text-center">Preparing your session...</h2>
                         <div className="space-y-4">
                             {checks.map(check => {
                                 const isDone = check.doneStages.includes(stage) || (stage === 'generating_questions' && check.stage !== 'generating_questions');
@@ -201,6 +229,14 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
                                 );
                             })}
                         </div>
+                         {stage === 'generating_questions' && (
+                            <div className="mt-8 text-center h-24 flex flex-col justify-center">
+                                <p className="text-gray-400 text-sm mb-2">Interview Tip:</p>
+                                <p key={currentTipIndex} className="text-lg text-white animate-fade-in-up">
+                                    "{interviewTips[currentTipIndex]}"
+                                </p>
+                            </div>
+                        )}
                     </>
                 );
             case 'inconsistent':
