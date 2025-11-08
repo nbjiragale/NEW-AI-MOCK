@@ -97,7 +97,8 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
             case 'list':
                 return !questionList.trim();
             case 'confidence':
-                return Object.values(confidenceAnswers).some(answer => !answer.trim());
+                // Fix: Explicitly type 'answer' as a string to resolve TypeScript inference issue.
+                return Object.values(confidenceAnswers).some((answer: string) => !answer.trim());
             default:
                 return true;
         }

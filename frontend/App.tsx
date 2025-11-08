@@ -11,6 +11,7 @@ import SetupPage from './pages/SetupPage';
 import VerificationPage from './pages/VerificationPage';
 import BeforeInterviewPage from './pages/BeforeInterviewPage';
 import InterviewPage from './pages/InterviewPage';
+import InterviewSummaryPage from './pages/InterviewSummaryPage';
 
 const App: React.FC = () => {
   const [page, setPage] = useState('landing');
@@ -46,12 +47,16 @@ const App: React.FC = () => {
     setPage('interview');
   }
 
-  const endInterview = () => {
+  const goToSummary = () => {
+    setPage('summary');
+  }
+
+  const startNewInterview = () => {
     setPage('landing');
     setSetupData(null);
     setInterviewQuestions(null);
     setInterviewerDetails(null);
-  }
+  };
 
   if (page === 'setup') {
     return (
@@ -93,9 +98,19 @@ const App: React.FC = () => {
           setupData={setupData} 
           interviewQuestions={interviewQuestions} 
           interviewerDetails={interviewerDetails}
-          onLeave={endInterview} 
+          onLeave={goToSummary} 
         />
     );
+  }
+
+  if (page === 'summary') {
+    return (
+       <div className="bg-dark min-h-screen overflow-x-hidden">
+        <main>
+          <InterviewSummaryPage onStartNew={startNewInterview} />
+        </main>
+      </div>
+    )
   }
 
   return (

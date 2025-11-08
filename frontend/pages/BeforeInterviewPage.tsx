@@ -99,11 +99,12 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
     const processingStateRef = useRef({ hasStarted: false });
 
     useEffect(() => {
-        let timer: NodeJS.Timeout;
+        // Fix: Replace NodeJS.Timeout with 'number' for browser compatibility and initialize to undefined.
+        let timer: number | undefined;
         if (stage === 'countdown') {
             document.title = `Starting in ${countdown}...`;
             if (countdown > 0) {
-                timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+                timer = window.setTimeout(() => setCountdown(c => c - 1), 1000);
             } else {
                 onStartInterview(generatedQuestionsRef.current, interviewerDetails);
             }
@@ -115,9 +116,10 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
     }, [stage, countdown, onStartInterview, interviewerDetails]);
 
     useEffect(() => {
-        let tipInterval: NodeJS.Timeout | null = null;
+        // Fix: Replace NodeJS.Timeout with 'number' for browser compatibility.
+        let tipInterval: number | null = null;
         if (stage === 'generating_questions') {
-            tipInterval = setInterval(() => {
+            tipInterval = window.setInterval(() => {
                 setTipAnimation('animate-slide-out-left');
                 setTimeout(() => {
                     setCurrentTipIndex(prevIndex => (prevIndex + 1) % interviewTips.length);
