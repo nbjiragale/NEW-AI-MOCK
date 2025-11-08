@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { validateCompany } from '../services/geminiStartInterview';
 
 interface VerificationPageProps {
     setupData: any;
@@ -16,6 +17,8 @@ const DetailItem: React.FC<{ label: string; value?: string | number }> = ({ labe
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const VerificationPage: React.FC<VerificationPageProps> = ({ setupData, onEdit, onConfirm }) => {
+    const [isVerifying, setIsVerifying] = useState(false);
+
     if (!setupData) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -25,6 +28,29 @@ const VerificationPage: React.FC<VerificationPageProps> = ({ setupData, onEdit, 
     }
     
     const { type, ...details } = setupData;
+
+    const handleConfirm = async () => {
+        // Only validate if a target company is specified and it's not a practice mode
+        if (setupData?.targetCompany && setupData.type !== 'Practice Mode') {
+            setIsVerifying(true);
+            try {
+                const result = await validateCompany(setupData.targetCompany);
+                if (result.companyExists) {
+                    onConfirm(); // Company is valid, proceed
+                } else {
+                    alert(`AI check: The company name "${setupData.targetCompany}" could not be verified.\n\nReason: ${result.reasoning}\n\nPlease click 'Edit' to check the spelling or enter a different company.`);
+                }
+            } catch (error) {
+                console.error("Verification failed:", error);
+                alert("An error occurred during verification. Please try again.");
+            } finally {
+                setIsVerifying(false);
+            }
+        } else {
+            // No company to validate, just start
+            onConfirm();
+        }
+    };
 
     const renderDetails = () => {
         if (type === 'Practice Mode') {
@@ -93,14 +119,16 @@ const VerificationPage: React.FC<VerificationPageProps> = ({ setupData, onEdit, 
                         <button 
                             onClick={onEdit}
                             className="w-full bg-slate-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-600 transition-transform transform hover:scale-105 duration-300"
+                            disabled={isVerifying}
                         >
                            Edit
                         </button>
                          <button 
-                            onClick={onConfirm}
-                            className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20"
+                            onClick={handleConfirm}
+                            className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={isVerifying}
                         >
-                            Confirm & Start
+                            {isVerifying ? 'Verifying...' : 'Confirm & Start'}
                         </button>
                     </div>
                 </div>
