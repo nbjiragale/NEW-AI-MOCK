@@ -1,6 +1,69 @@
 import { GoogleGenAI, Type } from '@google/genai';
 
 /**
+ * Checks for logical consistency between the candidate's role and topics.
+ * @param setupData The configuration data for the interview session.
+ * @returns An object with consistency status and reasoning.
+ */
+export const checkDetailsConsistency = async (setupData: any): Promise<{ isConsistent: boolean; reasoning: string }> => {
+    // Dynamically import to avoid load-time issues
+    const { GoogleGenAI, Type } = await import('@google/genai');
+    
+    const schema = {
+        type: Type.OBJECT,
+        properties: {
+            isConsistent: {
+                type: Type.BOOLEAN,
+                description: "True if the job role and topics are consistent and logical for an interview. False otherwise.",
+            },
+            reasoning: {
+                type: Type.STRING,
+                description: "A brief explanation for the consistency check. If inconsistent, explain why (e.g., 'The topics do not match the specified job role.').",
+            },
+        },
+        required: ["isConsistent", "reasoning"],
+    };
+
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+
+    // Don't run this check for practice mode or if topics/role are empty
+    if (setupData.type === 'Practice Mode' || !setupData.topics || !setupData.role || !setupData.topics.trim()) {
+        return { isConsistent: true, reasoning: "Consistency check not applicable for this mode." };
+    }
+
+    try {
+        const prompt = `Analyze the following candidate profile for logical consistency, specifically between the 'Role' and the 'Main Topics to Focus On'. For example, a 'Java Developer' role is inconsistent with 'C++' as a main topic. 
+        
+        - Role: ${setupData.role}
+        - Main Topics to Focus On: ${setupData.topics}
+        
+        Is this combination consistent for a job interview preparation? Provide a boolean response and a brief reason.`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: schema,
+            },
+        });
+
+        const jsonText = response.text.trim();
+        const result = JSON.parse(jsonText);
+
+        if (typeof result.isConsistent === 'boolean' && typeof result.reasoning === 'string') {
+            return result;
+        } else {
+            console.warn("Gemini consistency check response did not match schema:", result);
+            return { isConsistent: true, reasoning: "AI response format was unexpected, proceeding." };
+        }
+    } catch (error) {
+        console.error("Error checking consistency with Gemini API:", error);
+        return { isConsistent: true, reasoning: "Could not perform consistency check due to a technical error." };
+    }
+};
+
+/**
  * Validates the target company name using the Gemini API.
  * @param companyName The name of the company to validate.
  * @returns An object with validation status and reasoning.

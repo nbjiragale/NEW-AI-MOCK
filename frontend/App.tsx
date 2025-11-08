@@ -9,6 +9,7 @@ import CtaSection from './components/CtaSection';
 import Footer from './components/Footer';
 import SetupPage from './pages/SetupPage';
 import VerificationPage from './pages/VerificationPage';
+import BeforeInterviewPage from './pages/BeforeInterviewPage';
 import InterviewPage from './pages/InterviewPage';
 
 const App: React.FC = () => {
@@ -26,6 +27,10 @@ const App: React.FC = () => {
     setSetupData(data);
     setInterviewQuestions(null);
     setPage('verification');
+  };
+
+  const goToBeforeInterview = () => {
+    setPage('before_interview');
   };
 
   const backToSetup = () => {
@@ -57,7 +62,21 @@ const App: React.FC = () => {
     return (
       <div className="bg-dark min-h-screen overflow-x-hidden">
         <main>
-          <VerificationPage setupData={setupData} onEdit={backToSetup} onConfirm={startInterview} />
+          <VerificationPage setupData={setupData} onEdit={backToSetup} onConfirm={goToBeforeInterview} />
+        </main>
+      </div>
+    );
+  }
+
+  if (page === 'before_interview') {
+    return (
+      <div className="bg-dark min-h-screen overflow-x-hidden">
+        <main>
+          <BeforeInterviewPage 
+            setupData={setupData} 
+            onEdit={backToSetup} 
+            onStartInterview={startInterview} 
+          />
         </main>
       </div>
     );

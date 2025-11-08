@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
-import { validateCompany, generateInterviewQuestions } from '../services/geminiStartInterview';
+import React from 'react';
 
 interface VerificationPageProps {
     setupData: any;
     onEdit: () => void;
-    onConfirm: (questions: any) => void;
+    onConfirm: () => void;
 }
 
 const DetailItem: React.FC<{ label: string; value?: string | number }> = ({ label, value }) => (
@@ -17,8 +16,6 @@ const DetailItem: React.FC<{ label: string; value?: string | number }> = ({ labe
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const VerificationPage: React.FC<VerificationPageProps> = ({ setupData, onEdit, onConfirm }) => {
-    const [isLoading, setIsLoading] = useState(false);
-    const [loadingMessage, setLoadingMessage] = useState('');
 
     if (!setupData) {
         return (
@@ -30,50 +27,8 @@ const VerificationPage: React.FC<VerificationPageProps> = ({ setupData, onEdit, 
     
     const { type, ...details } = setupData;
 
-    const handleConfirm = async () => {
-        // If user provided a list of questions, bypass Gemini generation
-        if (setupData?.practiceType === 'By List of Questions') {
-            const questions = {
-                companySpecificQuestions: [],
-                theoryQuestions: setupData.questionList.split('\n').filter((q: string) => q.trim() !== ''),
-                handsOnQuestions: [],
-            };
-            onConfirm(questions);
-            return;
-        }
-
-        // Validate company if provided
-        if (setupData?.targetCompany && setupData.type !== 'Practice Mode') {
-            setIsLoading(true);
-            setLoadingMessage('Verifying company...');
-            try {
-                const result = await validateCompany(setupData.targetCompany);
-                if (!result.companyExists) {
-                    alert(`AI check: The company name "${setupData.targetCompany}" could not be verified.\n\nReason: ${result.reasoning}\n\nPlease click 'Edit' to check the spelling or enter a different company.`);
-                    setIsLoading(false);
-                    return;
-                }
-            } catch (error) {
-                console.error("Verification failed:", error);
-                alert("An error occurred during verification. Please try again.");
-                setIsLoading(false);
-                return;
-            }
-        }
-        
-        // Generate interview questions
-        setIsLoading(true);
-        setLoadingMessage('Generating AI interview questions...');
-        try {
-            const questions = await generateInterviewQuestions(setupData);
-            onConfirm(questions);
-        } catch (error) {
-            console.error("Question generation failed:", error);
-            alert("Sorry, we couldn't generate interview questions at the moment. Please try again.");
-        } finally {
-            setIsLoading(false);
-            setLoadingMessage('');
-        }
+    const handleConfirm = () => {
+        onConfirm();
     };
 
     const renderDetails = () => {
@@ -143,16 +98,14 @@ const VerificationPage: React.FC<VerificationPageProps> = ({ setupData, onEdit, 
                         <button 
                             onClick={onEdit}
                             className="w-full bg-slate-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-600 transition-transform transform hover:scale-105 duration-300"
-                            disabled={isLoading}
                         >
                            Edit
                         </button>
                          <button 
                             onClick={handleConfirm}
-                            className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={isLoading}
+                            className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20"
                         >
-                            {isLoading ? loadingMessage : 'Confirm & Start'}
+                            Confirm & Start
                         </button>
                     </div>
                 </div>
