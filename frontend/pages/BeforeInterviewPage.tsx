@@ -258,6 +258,48 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
                     </div>
                 );
              case 'countdown':
+                 const isCombined = interviewerDetails && interviewerDetails.length > 1;
+
+                 if (isCombined) {
+                    return (
+                        <div className="text-center flex flex-col items-center">
+                             <h2 className="text-2xl font-bold text-white mb-6">Your panel is joining...</h2>
+                             <div className="flex justify-center items-start gap-4 md:gap-8 mb-8">
+                                {interviewerDetails.map((interviewer, index) => {
+                                    const hasJoined = countdown <= 10 - (index + 1) * 2;
+                                    return (
+                                        <div key={interviewer.name} className={`flex flex-col items-center transition-all duration-500 ${hasJoined ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                                            <div className="relative mb-3">
+                                                <div className="h-20 w-20 rounded-full bg-slate-700 flex items-center justify-center ring-4 ring-slate-600">
+                                                    <span className="text-3xl font-bold text-primary">{interviewer.name.charAt(0)}</span>
+                                                </div>
+                                                 {hasJoined && (
+                                                    <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-slate-800 rounded-full flex items-center justify-center border-2 border-slate-800/50">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/50 opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                                                    </div>
+                                                 )}
+                                            </div>
+                                            <p className="font-semibold text-white">{interviewer.name}</p>
+                                            <p className="text-sm text-gray-400">{interviewer.role}</p>
+                                        </div>
+                                    )
+                                })}
+                             </div>
+                            <div className="w-full bg-slate-700 rounded-full h-2.5">
+                                <div 
+                                    className="bg-primary h-2.5 rounded-full" 
+                                    style={{ 
+                                        width: `${(10 - countdown) * 10}%`, 
+                                        transition: 'width 1s linear' 
+                                    }}
+                                ></div>
+                            </div>
+                            <p className="text-5xl font-bold text-white mt-4 font-mono">{countdown}</p>
+                        </div>
+                    );
+                 }
+                 
                  const primaryInterviewer = interviewerDetails ? interviewerDetails[0] : { name: 'Interviewer', role: '' };
                  const initial = primaryInterviewer.name.charAt(0);
 

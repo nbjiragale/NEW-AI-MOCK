@@ -153,7 +153,7 @@ export class CombinedLiveController {
 
         // Context Synchronization
         const historySummary = this.conversationHistory.slice(-4).map(turn => `${turn.speaker}: ${turn.text}`).join('\n');
-        const contextPrompt = `CONTEXT_SYNC: Here is a summary of the most recent conversation:\n${historySummary}\n\nYou are now the active interviewer. Please ask the next question from your list.`;
+        const contextPrompt = `CONTEXT_SYNC: Here is a summary of the most recent conversation:\n${historySummary}\n\nYou are now the active interviewer. Based on the candidate's last response, either ask a sharp, relevant follow-up question, or proceed to the next question on your list. Make the conversation feel natural.`;
         
         activeSession?.sendRealtimeInput({ text: contextPrompt });
     }
@@ -196,17 +196,16 @@ export class CombinedLiveController {
         const managerName = this.interviewers.behavioral.name;
         const engineerName = this.interviewers.technical.name;
 
-        const systemInstruction = `You are ${name}. You are part of an interview panel.
+        const systemInstruction = `You are ${name}, an expert interviewer. You are part of a panel.
 Your specific role is: ${this.interviewers[persona].role}.
-Here is the list of questions you are responsible for asking, in order:\n${questionList}
+Here are the questions you are responsible for asking:\n${questionList}
 
 CRITICAL RULES:
-- You must ONLY speak when you are the active interviewer.
+- You must ONLY speak when you are the active interviewer. Do NOT announce your name when you speak.
 - After you ask a question, you will become silent and listen to the user's response.
-- Only ask ONE question from your list when prompted.
-- You will be prompted with 'CONTEXT_SYNC: ...' before you are asked to speak. Review the context, then ask your next question.
-- You MUST preface your response with your name. Example: "${name}: ". This is essential. Do not include your role.
-- If you are ${name} (HR Specialist) and you receive the command 'GREET_CANDIDATE', you must begin the interview by saying: "${name}: Welcome. We are your panel for today. I'm ${name}, and we also have ${managerName}, our Hiring Manager, and ${engineerName}, our Senior Engineer. To begin, please ask for a technical, behavioral, or HR question whenever you're ready."
+- CONVERSATION FLOW: Your goal is a natural, flowing conversation. When prompted to speak again, you will get context from the last turn. Based on the candidate's answer, you can either ask a relevant follow-up question to probe deeper, or if satisfied, you can smoothly transition to the next question from your prepared list.
+- You will be prompted with 'CONTEXT_SYNC: ...' before you are asked to speak.
+- If you are ${name} (HR Specialist) and you receive the command 'GREET_CANDIDATE', you must begin the interview by introducing the panel (I'm ${name}, with ${managerName} our Hiring Manager, and ${engineerName} our Senior Engineer) and then immediately asking the very first question from your list. Do not wait for a prompt from the user.
 `;
         
         return { systemInstruction, voiceName };

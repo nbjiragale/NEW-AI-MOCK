@@ -78,6 +78,7 @@ export const initiateLiveSession = async ({
   
   let currentInputTranscription = '';
   let currentOutputTranscription = '';
+  let isClosing = false; // Flag to prevent multiple close calls
 
   const sessionPromise = ai.live.connect({
     model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -169,6 +170,8 @@ export const initiateLiveSession = async ({
 
   return {
     close: () => {
+      if (isClosing) return; // Guard against multiple calls
+      isClosing = true;
       session.close();
       inputAudioContext.close().catch(console.error);
       outputAudioContext.close().catch(console.error);
