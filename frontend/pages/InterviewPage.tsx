@@ -39,30 +39,41 @@ const VideoPlaceholder = ({ name, role, number, isSpeaking }: { name: string, ro
   </div>
 );
 
+const interviewerNames = [
+  'Olivia Chen', 'Amelia Kim', 'Sophia Rodriguez', 'Isabella Patel', 'Mia Nguyen',
+  'Charlotte Williams', 'Ava Johnson', 'Evelyn Garcia', 'Harper Martinez', 'Luna Davis',
+  'Emily Brown', 'Abigail Miller', 'Elizabeth Wilson', 'Sofia Moore', 'Madison Taylor',
+  'Avery Anderson', 'Scarlett Thomas', 'Chloe Jackson', 'Victoria White', 'Grace Harris'
+];
+
+// Function to get random names without repetition
+const getRandomNames = (count: number): string[] => {
+  const shuffled = [...interviewerNames].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+};
+
 const getInterviewerDetails = (setupData: any) => {
   const isCombined = setupData?.interviewType === 'Combined';
   if (isCombined) {
+    const randomNames = getRandomNames(3);
     return [
-      { name: 'Alex Ray', role: 'Software Engineer' },
-      { name: 'Casey Morgan', role: 'Hiring Manager' },
-      { name: 'Jordan Lee', role: 'HR Specialist' },
+      { name: randomNames[0], role: 'Software Engineer' },
+      { name: randomNames[1], role: 'Hiring Manager' },
+      { name: randomNames[2], role: 'HR Specialist' },
     ];
   }
 
   let role = 'Interviewer';
-  let name = 'Alex Ray';
+  const name = getRandomNames(1)[0];
   switch (setupData?.interviewType) {
     case 'Technical':
       role = 'Software Engineer';
-      name = 'Alex Ray';
       break;
     case 'Behavioral/Managerial':
       role = 'Hiring Manager';
-      name = 'Casey Morgan';
       break;
     case 'HR':
       role = 'HR Specialist';
-      name = 'Jordan Lee';
       break;
   }
   return [{ name, role }];
