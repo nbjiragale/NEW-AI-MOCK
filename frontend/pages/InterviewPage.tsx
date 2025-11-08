@@ -110,7 +110,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   // State for coding mode
   const [isCodingMode, setIsCodingMode] = useState(false);
   const [isQuestionCollapsed, setIsQuestionCollapsed] = useState(false);
-  const [code, setCode] = useState("");
+  const [codes, setCodes] = useState<Record<string, string>>({});
   const [fontSize, setFontSize] = useState(14);
   
   const [handsOnQuestions, setHandsOnQuestions] = useState<any[]>([]);
@@ -404,14 +404,15 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   };
   
   const handleValidateAnswer = async () => {
-    if (!activeHandsOnQuestion || !code.trim()) {
+    const currentCode = codes[activeCategory] || '';
+    if (!activeHandsOnQuestion || !currentCode.trim()) {
         alert("Please select a question and write your answer first.");
         return;
     }
     setIsValidating(true);
     setValidationResult(null);
     try {
-        const result = await validateAnswer(activeHandsOnQuestion, code);
+        const result = await validateAnswer(activeHandsOnQuestion, currentCode);
         setValidationResult(result);
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during validation.";
@@ -419,6 +420,13 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
     } finally {
         setIsValidating(false);
     }
+  };
+
+  const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setCodes(prev => ({
+      ...prev,
+      [activeCategory]: e.target.value,
+    }));
   };
 
   const getPlaceholderForCategory = () => {
@@ -512,8 +520,8 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                         <button onClick={() => setFontSize(s => Math.min(24, s + 1))} className="w-6 h-6 rounded bg-slate-700 hover:bg-slate-600">+</button>
                     </div>
                     <textarea 
-                        value={code} 
-                        onChange={e => setCode(e.target.value)} 
+                        value={codes[activeCategory] || ''} 
+                        onChange={handleCodeChange} 
                         style={{ fontSize: `${fontSize}px` }}
                         className="flex-1 w-full bg-transparent p-4 font-mono focus:outline-none resize-none"
                         placeholder={getPlaceholderForCategory()}
@@ -551,7 +559,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                                 </div>
                             )}
                         </div>
-                        <button onClick={() => { setCode(""); setValidationResult(null); }} className="px-4 py-2 text-sm font-semibold bg-slate-700 rounded-md hover:bg-slate-600 transition-colors">Clear all</button>
+                        <button onClick={() => { setCodes(prev => ({ ...prev, [activeCategory]: '' })); setValidationResult(null); }} className="px-4 py-2 text-sm font-semibold bg-slate-700 rounded-md hover:bg-slate-600 transition-colors">Clear</button>
                         <button onClick={handleValidateAnswer} disabled={isValidating} className="px-4 py-2 text-sm font-semibold bg-primary text-white rounded-md hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center justify-center w-32">
                             {isValidating ? (
                                 <SpinnerIcon />
