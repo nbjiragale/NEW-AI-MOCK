@@ -91,6 +91,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   const [activeHandsOnQuestion, setActiveHandsOnQuestion] = useState<any>(null);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('');
+  const [showLeetcodeModal, setShowLeetcodeModal] = useState(false);
 
   const hasHandsOnQuestions = handsOnQuestions && handsOnQuestions.length > 0;
   const canShowHandsOnButton = (setupData?.interviewType === 'Technical' || setupData?.interviewType === 'Combined') && hasHandsOnQuestions;
@@ -385,7 +386,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
       <div className="p-3 border-b border-slate-800 flex-shrink-0 bg-slate-900/50 flex justify-between items-center">
         {isCodingMode ? (
             <div className="flex items-center gap-4">
-                <button onClick={() => setIsCodingMode(false)} className="px-3 py-2 text-sm font-semibold bg-blue-600 rounded-md hover:bg-blue-500 transition-colors text-white">
+                <button onClick={() => setIsCodingMode(false)} className="px-3 py-2 text-sm font-semibold bg-green-600 rounded-md hover:bg-green-500 transition-colors text-white">
                     Back to the call
                 </button>
                 {availableCategories.length > 0 && (
@@ -466,17 +467,15 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                     />
                      <div className="flex-shrink-0 flex items-center gap-4 p-3 border-t border-slate-700">
                         {activeCategory === 'DSA' && (
-                            <a
-                                href="https://leetcode.com/problems/find-the-duplicate-number/"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                             <button
+                                onClick={() => setShowLeetcodeModal(true)}
                                 className="px-4 py-2 text-sm font-semibold bg-yellow-600 text-white rounded-md hover:bg-yellow-500 transition-colors flex items-center gap-2"
                             >
                                 Solve on Leetcode
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                 </svg>
-                            </a>
+                            </button>
                         )}
                         <div className="flex-grow"></div>
                         <button onClick={() => setCode("")} className="px-4 py-2 text-sm font-semibold bg-slate-700 rounded-md hover:bg-slate-600 transition-colors">Clear all</button>
@@ -586,6 +585,46 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
             </>
         )}
       </main>
+      
+      {showLeetcodeModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-up" style={{ animationDuration: '0.3s' }}>
+          <div className="bg-slate-800 rounded-lg shadow-xl p-8 max-w-md w-full border border-slate-700 relative">
+            <button 
+              onClick={() => setShowLeetcodeModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+              aria-label="Close"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="text-center">
+              <h3 className="text-xl font-semibold text-white mb-4">Ready to Solve on Leetcode?</h3>
+              <p className="text-gray-300 mb-8">
+                Solve and come back and paste your code here.
+              </p>
+              <button
+                onClick={() => {
+                  const slug = activeHandsOnQuestion?.leetcodeSlug;
+                  const title = activeHandsOnQuestion?.title;
+                  
+                  let leetcodeUrl = `https://leetcode.com/problemset/?search=${encodeURIComponent(title || '')}`;
+
+                  if (slug) {
+                    leetcodeUrl = `https://leetcode.com/problems/${slug}/`;
+                  }
+                  
+                  window.open(leetcodeUrl, '_blank');
+                  setShowLeetcodeModal(false);
+                }}
+                className="w-full bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-500 transition transform hover:scale-105"
+              >
+                Proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
