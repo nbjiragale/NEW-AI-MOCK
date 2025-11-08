@@ -5,12 +5,38 @@ import { MicOn } from '../icons/MicOn';
 import { MicOff } from '../icons/MicOff';
 import { initiateLiveSession } from '../services/geminiLiveService';
 import { CombinedLiveController } from '../services/combinedLiveController';
+import { validateAnswer } from '../services/geminiForValidation';
 
 // Icons
 const PhoneHangUpIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 3H8C6.34315 3 5 4.34315 5 6V18C5 19.6569 6.34315 21 8 21H16C17.6569 21 19 19.6569 19 18V6C19 4.34315 17.6569 3 16 3Z" transform="rotate(135 12 12)" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.5 9.5L9.5 14.5M9.5 9.5L14.5 14.5" transform="rotate(135 12 12)" />
+    </svg>
+);
+
+const CheckIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+    </svg>
+);
+
+const CrossIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+);
+
+const SpinnerIcon: React.FC = () => (
+    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+);
+
+const HintIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 cursor-pointer text-blue-300 hover:text-blue-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
 );
 
@@ -92,6 +118,14 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [showLeetcodeModal, setShowLeetcodeModal] = useState(false);
+  
+  // State for answer validation
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<{
+      isCorrect: boolean | null;
+      feedback: string;
+      hint: string | null;
+  } | null>(null);
 
   const hasHandsOnQuestions = handsOnQuestions && handsOnQuestions.length > 0;
   const canShowHandsOnButton = (setupData?.interviewType === 'Technical' || setupData?.interviewType === 'Combined') && hasHandsOnQuestions;
@@ -366,6 +400,25 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
       setActiveCategory(category);
       const questionForCategory = handsOnQuestions.find(q => q.category === category);
       setActiveHandsOnQuestion(questionForCategory);
+      setValidationResult(null); // Reset validation on question change
+  };
+  
+  const handleValidateAnswer = async () => {
+    if (!activeHandsOnQuestion || !code.trim()) {
+        alert("Please select a question and write your answer first.");
+        return;
+    }
+    setIsValidating(true);
+    setValidationResult(null);
+    try {
+        const result = await validateAnswer(activeHandsOnQuestion, code);
+        setValidationResult(result);
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during validation.";
+        setValidationResult({ isCorrect: null, feedback: errorMessage, hint: null });
+    } finally {
+        setIsValidating(false);
+    }
   };
 
   const getPlaceholderForCategory = () => {
@@ -477,9 +530,35 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                                 </svg>
                             </button>
                         )}
-                        <div className="flex-grow"></div>
-                        <button onClick={() => setCode("")} className="px-4 py-2 text-sm font-semibold bg-slate-700 rounded-md hover:bg-slate-600 transition-colors">Clear all</button>
-                        <button onClick={() => alert('Validating...')} className="px-4 py-2 text-sm font-semibold bg-primary text-white rounded-md hover:bg-blue-500 transition-colors">Validate answer</button>
+                        <div className="flex-grow flex items-center gap-2">
+                            {validationResult && (
+                                <div className={`flex items-center gap-2 p-2 rounded-md text-sm animate-fade-in-up ${
+                                    validationResult.isCorrect === true ? 'bg-green-900/50 text-green-300' : 
+                                    validationResult.isCorrect === false ? 'bg-red-900/50 text-red-300' :
+                                    'bg-yellow-900/50 text-yellow-300'
+                                }`}>
+                                    {validationResult.isCorrect === true && <CheckIcon />}
+                                    {validationResult.isCorrect === false && <CrossIcon />}
+                                    <span>{validationResult.feedback}</span>
+                                    {validationResult.isCorrect === false && validationResult.hint && (
+                                        <div className="relative group">
+                                            <HintIcon />
+                                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-72 hidden group-hover:block bg-slate-900 text-white text-xs rounded py-2 px-3 shadow-lg border border-slate-700 z-10">
+                                                <strong>Hint:</strong> {validationResult.hint}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <button onClick={() => { setCode(""); setValidationResult(null); }} className="px-4 py-2 text-sm font-semibold bg-slate-700 rounded-md hover:bg-slate-600 transition-colors">Clear all</button>
+                        <button onClick={handleValidateAnswer} disabled={isValidating} className="px-4 py-2 text-sm font-semibold bg-primary text-white rounded-md hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center justify-center w-32">
+                            {isValidating ? (
+                                <SpinnerIcon />
+                            ) : (
+                                'Validate answer'
+                            )}
+                        </button>
                     </div>
                 </section>
 
