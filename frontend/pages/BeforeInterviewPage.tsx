@@ -37,11 +37,12 @@ const SpinnerIcon: React.FC = () => (
 );
 
 const interviewerNames = [
-  'Olivia Chen', 'Amelia Kim', 'Sophia Rodriguez', 'Isabella Patel', 'Mia Nguyen',
-  'Charlotte Williams', 'Ava Johnson', 'Evelyn Garcia', 'Harper Martinez', 'Luna Davis',
-  'Emily Brown', 'Abigail Miller', 'Elizabeth Wilson', 'Sofia Moore', 'Madison Taylor',
-  'Avery Anderson', 'Scarlett Thomas', 'Chloe Jackson', 'Victoria White', 'Grace Harris'
+  'Anna', 'Lily', 'Sara', 'Nina',
+  'Emma', 'Zoe', 'Lucy', 'Ruby', 'Ella',
+  'Kate', 'Leah', 'Ivy', 'Maya', 'Tina',
+  'Amy', 'Chloe', 'Nora', 'Lila', 'Grace', 'Eva'
 ];
+
 
 const interviewTips = [
   "Research the company and the role thoroughly before the interview.",
