@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { analyzeResume } from '../services/geminiService';
+import { analyzeResume } from '../services/geminiForResumeAnalysis';
 
 const FormSelect: React.FC<{ label: string; name: string; children: React.ReactNode; defaultValue?: string; value?: string; onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void }> = ({ label, name, children, defaultValue, value, onChange }) => (
     <div>
