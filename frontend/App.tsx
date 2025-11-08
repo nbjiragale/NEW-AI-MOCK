@@ -14,14 +14,17 @@ import InterviewPage from './pages/InterviewPage';
 const App: React.FC = () => {
   const [page, setPage] = useState('landing');
   const [setupData, setSetupData] = useState<any>(null);
+  const [interviewQuestions, setInterviewQuestions] = useState<any>(null);
 
   const goToSetup = () => {
     setSetupData(null); // Clear data for a fresh start
+    setInterviewQuestions(null);
     setPage('setup');
   };
   
   const goToVerification = (data: any) => {
     setSetupData(data);
+    setInterviewQuestions(null);
     setPage('verification');
   };
 
@@ -29,13 +32,15 @@ const App: React.FC = () => {
     setPage('setup');
   };
 
-  const startInterview = () => {
+  const startInterview = (questions: any) => {
+    setInterviewQuestions(questions);
     setPage('interview');
   }
 
   const endInterview = () => {
     setPage('landing');
     setSetupData(null);
+    setInterviewQuestions(null);
   }
 
   if (page === 'setup') {
@@ -60,7 +65,7 @@ const App: React.FC = () => {
 
   if (page === 'interview') {
     return (
-        <InterviewPage setupData={setupData} onLeave={endInterview} />
+        <InterviewPage setupData={setupData} interviewQuestions={interviewQuestions} onLeave={endInterview} />
     );
   }
 

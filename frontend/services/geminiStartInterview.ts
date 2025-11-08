@@ -1,3 +1,5 @@
+import { GoogleGenAI, Type } from '@google/genai';
+
 /**
  * Validates the target company name using the Gemini API.
  * @param companyName The name of the company to validate.
@@ -52,5 +54,93 @@ export const validateCompany = async (companyName: string): Promise<{ companyExi
         console.error("Error validating company with Gemini API:", error);
         // In case of API error, let the user proceed rather than blocking them.
         return { companyExists: true, reasoning: "Could not verify due to a technical error. Proceeding." };
+    }
+};
+
+
+/**
+ * Generates interview questions using the Gemini API based on setup data.
+ * @param setupData The configuration data for the interview session.
+ * @returns A structured object of interview questions.
+ */
+export const generateInterviewQuestions = async (setupData: any) => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+
+    const schema = {
+        type: Type.OBJECT,
+        properties: {
+            companySpecificQuestions: {
+                type: Type.ARRAY,
+                description: "A list of 3-5 research-based or cultural fit questions relevant to the target company. If no company is specified, generate generic cultural fit questions.",
+                items: { type: Type.STRING },
+            },
+            theoryQuestions: {
+                type: Type.ARRAY,
+                description: "A list of 5-7 conceptual questions based on the role, experience, and topics provided.",
+                items: { type: Type.STRING },
+            },
+            handsOnQuestions: {
+                type: Type.ARRAY,
+                description: "A list of 1-2 practical, scenario-based, or coding problems. For coding problems, provide a title and a detailed description.",
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING, description: "The title of the hands-on problem." },
+                        description: { type: Type.STRING, description: "A detailed description of the problem, including inputs, outputs, and constraints." },
+                    },
+                    required: ["title", "description"],
+                },
+            },
+        },
+        required: ["companySpecificQuestions", "theoryQuestions", "handsOnQuestions"],
+    };
+
+    const buildPrompt = () => {
+        let prompt = `You are an expert technical interviewer preparing for a mock interview. Based on the following candidate profile, generate a set of interview questions.
+        
+Candidate Profile:
+- Role: ${setupData.role || 'Not specified'}
+- Experience: ${setupData.experience || 'Not specified'} years
+- Interview Type: ${setupData.interviewType}
+- Key Topics to focus on: ${setupData.topics || 'General topics for the role'}
+- Target Company / Style: ${setupData.targetCompany || 'A generic tech company'}`;
+
+        if (setupData.type === 'Practice Mode') {
+            prompt = `You are an AI practice partner. Generate interview questions for a user in practice mode.
+            
+Session Details:
+- Interview Type: ${setupData.interviewType}`;
+            if (setupData.practiceType === 'By Topic Name') {
+                prompt += `\n- Topic: ${setupData.topicName}`;
+            } else if (setupData.practiceType === 'Build Confidence') {
+                 const reflections = setupData.confidenceAnswers.map((item: {question: string, answer: string}) => `- ${item.question}\n  - ${item.answer}`).join('\n');
+                 prompt += `\n- The user wants to build confidence. Based on their reflections below, create questions that target their weaker areas in a supportive way.\n${reflections}`;
+            }
+        }
+
+        prompt += `\n\nGenerate questions categorized into three types:
+1. Company-Specific Questions: Relevant to the company style.
+2. Theory Questions: Conceptual questions based on the profile.
+3. Hands-On Questions: Practical problems or coding challenges. For each coding challenge, provide a title and a detailed description.
+
+Return the response in a structured JSON format adhering to the provided schema. Ensure the questions are appropriate for the candidate's experience level.`;
+
+        return prompt;
+    };
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: buildPrompt(),
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: schema,
+            },
+        });
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText);
+    } catch (error) {
+        console.error("Error generating interview questions with Gemini API:", error);
+        throw new Error("Failed to generate interview questions. Please try again.");
     }
 };

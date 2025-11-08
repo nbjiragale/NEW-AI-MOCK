@@ -69,20 +69,23 @@ const dummyTranscript = [
   { speaker: 'Interviewer', text: "That's great to hear. Can you walk me through a challenging project you've worked on?" },
 ];
 
-const dummyQuestion = {
-    title: 'Find the Duplicate Number',
-    details: 'Given an array of integers `nums` containing `n + 1` integers where each integer is in the range `[1, n]` inclusive.\n\nThere is only one repeated number in `nums`, return this repeated number.\n\nYou must solve the problem without modifying the array `nums` and using only constant extra space.'
-};
-
 interface InterviewPageProps {
   onLeave: () => void;
   setupData: any;
+  interviewQuestions: any;
 }
 
-const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => {
+const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, interviewQuestions }) => {
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isMicOn, setIsMicOn] = useState(true);
-  const [transcript, setTranscript] = useState(dummyTranscript);
+  
+  const [transcript, setTranscript] = useState(() => {
+    if (interviewQuestions?.theoryQuestions?.length > 0) {
+        return [{ speaker: 'Interviewer', text: interviewQuestions.theoryQuestions[0] }];
+    }
+    return [{ speaker: 'Interviewer', text: 'Thanks for joining today. Can you tell me a bit about yourself?' }];
+  });
+
   const [timeLeft, setTimeLeft] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -100,6 +103,19 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
   const [fontSize, setFontSize] = useState(14);
   const [activeTab, setActiveTab] = useState('DSA');
   const tabs = ['DSA', 'SQL', 'Other'];
+  
+  const [codingQuestion, setCodingQuestion] = useState(() => {
+    if (interviewQuestions?.handsOnQuestions?.length > 0) {
+        return {
+            title: interviewQuestions.handsOnQuestions[0].title,
+            details: interviewQuestions.handsOnQuestions[0].description,
+        };
+    }
+    return {
+        title: 'Find the Duplicate Number',
+        details: 'Given an array of integers `nums` containing `n + 1` integers where each integer is in the range `[1, n]` inclusive.\n\nThere is only one repeated number in `nums`, return this repeated number.\n\nYou must solve the problem without modifying the array `nums` and using only constant extra space.'
+    };
+  });
 
 
   useEffect(() => {
@@ -217,14 +233,6 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
       videoRef.current.srcObject = streamRef.current;
     }
   }, [streamLoaded]);
-  
-  useEffect(() => {
-      if(isCodingMode) return;
-      const interval = setInterval(() => {
-          setTranscript(prev => [...prev, { speaker: 'Interviewer', text: 'Tell me more about that...' }]);
-      }, 5000);
-      return () => clearInterval(interval);
-  }, [isCodingMode]);
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -336,8 +344,8 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
                     </button>
                     <div className={`transition-opacity duration-200 ${isQuestionCollapsed ? 'opacity-0' : 'opacity-100'}`}>
                         <div className="p-4 overflow-y-auto h-full">
-                            <h3 className="text-lg font-semibold text-primary mb-3">{dummyQuestion.title}</h3>
-                            <p className="text-gray-300 whitespace-pre-wrap text-lg">{dummyQuestion.details}</p>
+                            <h3 className="text-lg font-semibold text-primary mb-3">{codingQuestion.title}</h3>
+                            <p className="text-gray-300 whitespace-pre-wrap text-lg">{codingQuestion.details}</p>
                         </div>
                     </div>
                 </aside>
