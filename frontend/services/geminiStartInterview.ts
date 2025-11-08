@@ -183,7 +183,7 @@ export const generateInterviewQuestions = async (setupData: any) => {
             }),
             handsOnQuestions: {
                 type: Type.ARRAY,
-                description: "A list of practical, scenario-based, or coding problems. For technical interviews, this will contain exactly one DSA, one SQL, and one 'Other' problem.",
+                description: "A list of practical, scenario-based, or coding problems. For 'Technical' and 'Combined' interviews, this MUST contain exactly one DSA, one SQL, and one 'Other' problem.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
@@ -256,11 +256,11 @@ Session Details:
 1.  **For the Software Engineer:** Populate \`technicalQuestions\` with conceptual questions.
 2.  **For the Hiring Manager:** Populate \`behavioralQuestions\` with situational questions that probe leadership, teamwork, and problem-solving skills using the STAR method.
 3.  **For the HR Specialist:** Populate \`hrQuestions\` with questions about motivation, cultural fit, and career goals, considering the target company if provided.
-4.  **Hands-On Challenge:** For \`handsOnQuestions\`, generate 1 practical problem.
-    - **Categorization:** You MUST categorize this question into 'DSA', 'SQL', or 'Other'.
-    - **DSA Logic:** If 'Key Topics' include 'Data Structures' or 'Algorithms', generate a DSA problem. **Crucially, if it's a known LeetCode problem, you MUST provide its URL slug in the \`leetcodeSlug\` field (e.g., "two-sum"). If it's a custom problem, set \`leetcodeSlug\` to null.**
-    - **Other Logic:** If 'Key Topics' include 'SQL', generate an SQL problem and categorize it as 'SQL'. Otherwise, create a relevant practical scenario and categorize it as 'Other'. For non-DSA questions, set \`leetcodeSlug\` to null.
-    - **Assignment:** The question should be assigned to the most appropriate interviewer (e.g., DSA for Engineer, a scenario for Manager).`;
+4.  **Hands-On Challenges:** For \`handsOnQuestions\`, you MUST generate exactly THREE practical problems, one for each category:
+    - **One DSA Question:** Create a classic data structure or algorithm coding problem. This is for the Software Engineer. Categorize it as 'DSA'. If it is a known LeetCode problem, you MUST provide its URL slug in the \`leetcodeSlug\` field (e.g., "two-sum"). Otherwise, set \`leetcodeSlug\` to null.
+    - **One SQL Question:** Create a database query problem. This is for the Software Engineer. Provide a simple schema and the task. Categorize it as 'SQL'. Set \`leetcodeSlug\` to null.
+    - **One 'Other' Question:** Create a practical, scenario-based problem that a Hiring Manager might ask to assess problem-solving (e.g., system design, process improvement). Categorize it as 'Other'. Set \`leetcodeSlug\` to null.
+    These questions should be inspired by the candidate's profile and key topics where applicable.`;
                     break;
                 case 'HR':
                     persona = 'You are an experienced and empathetic HR professional conducting an initial screening interview. Your goal is to assess the candidate\'s personality, motivation, cultural fit, and basic qualifications. You should be welcoming and aim to understand the candidate\'s career aspirations and how they align with the company\'s values.';
