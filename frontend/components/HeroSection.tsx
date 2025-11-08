@@ -1,6 +1,15 @@
 import React from 'react';
 
 const HeroSection: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) => {
+  
+  const handleLearnMoreClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const targetElement = document.getElementById('how-it-works');
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <section id="home" className="relative pt-32 pb-20 md:pt-48 md:pb-32 text-center bg-dark overflow-hidden">
       <div className="absolute inset-0 bg-grid-slate-800/[0.2] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
@@ -19,7 +28,7 @@ const HeroSection: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) =
             <button onClick={onGetStarted} className="bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20">
               Start Practicing Now
             </button>
-            <a href="#how-it-works" className="bg-slate-800 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-700 transition-transform transform hover:scale-105 duration-300">
+            <a href="#how-it-works" onClick={handleLearnMoreClick} className="bg-slate-800 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-700 transition-transform transform hover:scale-105 duration-300">
               Learn More
             </a>
           </div>

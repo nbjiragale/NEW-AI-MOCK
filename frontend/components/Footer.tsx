@@ -7,6 +7,18 @@ const SocialIcon: React.FC<{ href: string, children: React.ReactNode }> = ({ hre
 );
 
 const Footer: React.FC = () => {
+    
+    const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+        e.preventDefault();
+        const href = e.currentTarget.getAttribute('href');
+        if (!href) return;
+        const targetId = href.substring(1);
+        const targetElement = document.getElementById(targetId);
+        if (targetElement) {
+          targetElement.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
     return (
         <footer className="bg-slate-900/50 border-t border-slate-800">
             <div className="container mx-auto px-6 py-12">
@@ -29,8 +41,8 @@ const Footer: React.FC = () => {
                         <div>
                             <h3 className="font-semibold text-white mb-4">Product</h3>
                             <ul className="space-y-2">
-                                <li><a href="#features" className="text-gray-400 hover:text-primary">Features</a></li>
-                                <li><a href="#how-it-works" className="text-gray-400 hover:text-primary">How It Works</a></li>
+                                <li><a href="#features" onClick={handleNavClick} className="text-gray-400 hover:text-primary">Features</a></li>
+                                <li><a href="#how-it-works" onClick={handleNavClick} className="text-gray-400 hover:text-primary">How It Works</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-primary">Pricing</a></li>
                             </ul>
                         </div>

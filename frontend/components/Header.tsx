@@ -26,8 +26,21 @@ const Header: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) => {
     { name: 'Testimonials', href: '#testimonials' },
     { name: 'FAQ', href: '#faq' },
   ];
+  
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const href = e.currentTarget.getAttribute('href');
+    if (!href) return;
+    const targetId = href.substring(1);
+    const targetElement = document.getElementById(targetId);
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
-  const handleMobileLinkClick = () => {
+
+  const handleMobileLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    handleNavClick(e);
     setIsMenuOpen(false);
   };
   
@@ -46,7 +59,7 @@ const Header: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) => {
           </a>
           <nav className="hidden md:flex space-x-8">
             {navLinks.map((link) => (
-              <a key={link.name} href={link.href} className="text-gray-300 hover:text-primary transition-colors duration-300">
+              <a key={link.name} href={link.href} onClick={handleNavClick} className="text-gray-300 hover:text-primary transition-colors duration-300">
                 {link.name}
               </a>
             ))}

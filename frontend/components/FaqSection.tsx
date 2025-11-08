@@ -29,16 +29,18 @@ interface FAQItemProps {
 const FAQItem: React.FC<FAQItemProps> = ({ question, answer, isOpen, onClick }) => {
   return (
     <div className="border-b border-slate-700">
-      <button onClick={onClick} className="w-full text-left py-6 flex justify-between items-center">
+      <button onClick={onClick} className="w-full text-left py-6 flex justify-between items-center" aria-expanded={isOpen}>
         <span className="text-lg font-semibold text-white">{question}</span>
         <span className={`transform transition-transform duration-300 ${isOpen ? 'rotate-45' : 'rotate-0'}`}>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
           </svg>
         </span>
       </button>
-      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-96' : 'max-h-0'}`}>
-        <p className="pb-6 text-gray-400">{answer}</p>
+      <div className={`grid transition-all duration-500 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+        <div className="overflow-hidden">
+            <p className="pb-6 text-gray-400">{answer}</p>
+        </div>
       </div>
     </div>
   );

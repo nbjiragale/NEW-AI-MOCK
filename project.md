@@ -87,7 +87,51 @@ The entire user journey is managed within the main `frontend/App.tsx` component.
 
 ---
 
-## 5. Gemini API Integration (`frontend/services/`)
+## 5. Landing Page Components
+
+The landing page (`page: 'landing'`) is the initial entry point for users. It is composed of several reusable React components designed to inform and convert potential users.
+
+### 5.1 Features (`FeaturesSection.tsx`)
+
+-   **Purpose:** To highlight the key value propositions of the InterviewAI platform.
+-   **Content:** This section presents a grid of "feature cards," each containing an icon, a title, and a short description.
+-   **Key Features Displayed:**
+    -   **Instant, Detailed Feedback:** Emphasizes the AI-driven analysis on answers, filler words, and pace.
+    -   **Realistic Interview Scenarios:** Showcases the tailored question library for specific roles and industries.
+    -   **Performance Analytics:** Mentions the ability to track progress over time.
+    -   **Customizable Sessions:** Highlights the flexibility to focus on specific question types (behavioral, technical, etc.).
+
+### 5.2 How It Works (`HowItWorksSection.tsx`)
+
+-   **Purpose:** To simplify the user journey and explain how to use the platform in a few easy steps.
+-   **Content:** Visually lays out a 3-step process.
+-   **Steps:**
+    1.  **Select Your Role:** User chooses their career path to get relevant questions.
+    2.  **Start the AI Interview:** User engages in a conversation with the AI interviewer.
+    3.  **Receive Your Analysis:** User gets an instant, comprehensive report on their performance.
+
+### 5.3 Testimonials (`TestimonialsSection.tsx`)
+
+-   **Purpose:** To build credibility and social proof by showcasing success stories.
+-   **Content:** Displays a series of testimonial cards from fictional users in different roles (e.g., Software Engineer, Product Manager).
+-   **Structure:** Each testimonial includes:
+    -   A compelling quote about their positive experience.
+    -   The user's name and professional title.
+    -   A profile picture.
+
+### 5.4 FAQ (`FaqSection.tsx`)
+
+-   **Purpose:** To proactively answer common questions and alleviate potential user concerns.
+-   **Content:** An interactive accordion-style list of frequently asked questions.
+-   **Topics Covered:**
+    -   How the AI evaluates answers (mentioning NLP).
+    -   Data privacy and security measures.
+    -   The range of job roles available for practice.
+    -   Mobile device compatibility.
+
+---
+
+## 6. Gemini API Integration (`frontend/services/`)
 
 This is the heart of the application. Each service is tailored for a specific task.
 

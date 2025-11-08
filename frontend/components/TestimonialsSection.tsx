@@ -5,19 +5,19 @@ const testimonials = [
     quote: "InterviewAI completely changed how I prepare for interviews. The AI feedback was brutally honest but incredibly helpful. I landed my dream job at a FAANG company!",
     name: "Sarah L.",
     title: "Software Engineer",
-    imageUrl: "https://picsum.photos/seed/sarah/100/100"
+    imageUrl: "https://i.pravatar.cc/100?u=sarah"
   },
   {
     quote: "As a product manager, communication is key. This tool helped me refine my storytelling and present my case studies more effectively. A must-have for any PM.",
     name: "David C.",
     title: "Product Manager",
-    imageUrl: "https://picsum.photos/seed/david/100/100"
+    imageUrl: "https://i.pravatar.cc/100?u=david"
   },
   {
     quote: "I used to be so nervous before interviews. Practicing with the AI in a safe environment built my confidence immensely. I felt so prepared on the actual day.",
     name: "Emily R.",
     title: "UX Designer",
-    imageUrl: "https://picsum.photos/seed/emily/100/100"
+    imageUrl: "https://i.pravatar.cc/100?u=emily"
   }
 ];
 
@@ -38,7 +38,7 @@ const TestimonialsSection: React.FC = () => {
                 <p className="text-gray-300 italic">"{testimonial.quote}"</p>
               </div>
               <div className="flex items-center">
-                <img className="w-12 h-12 rounded-full mr-4" src={testimonial.imageUrl} alt={testimonial.name} />
+                <img className="w-12 h-12 rounded-full mr-4 object-cover" src={testimonial.imageUrl} alt={testimonial.name} />
                 <div>
                   <p className="font-bold text-white">{testimonial.name}</p>
                   <p className="text-sm text-primary">{testimonial.title}</p>
