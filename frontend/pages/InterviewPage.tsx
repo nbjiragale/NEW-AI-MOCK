@@ -488,7 +488,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
       
       <main className="flex flex-1 overflow-hidden">
         {isCodingMode ? (
-            <>
+            <div key="coding-view" className="flex flex-1 animate-fade-in-up" style={{ animationDuration: '0.5s' }}>
                 {/* Question Panel */}
                 <aside className={`bg-slate-900/30 flex flex-col transition-all duration-300 ease-in-out relative border-r border-slate-700 ${isQuestionCollapsed ? 'w-12' : 'w-1/3'}`}>
                     <button onClick={() => setIsQuestionCollapsed(!isQuestionCollapsed)} className="absolute top-1/2 -translate-y-1/2 -right-3.5 z-10 w-7 h-7 bg-slate-700 hover:bg-primary rounded-full flex items-center justify-center transition-colors">
@@ -589,9 +589,9 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                         <span>Leave call</span>
                     </button>
                 </aside>
-            </>
+            </div>
         ) : (
-            <>
+            <div key="call-view" className="flex flex-1 animate-fade-in-up" style={{ animationDuration: '0.5s' }}>
                 <div className="flex-1 flex flex-col p-4 gap-4">
                 <div className={`flex-shrink-0 flex flex-wrap ${interviewersDetails.length === 1 ? 'justify-center' : 'justify-center md:justify-around'} gap-4`}>
                     {interviewersDetails.map((details, index) => (
@@ -661,7 +661,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                     </button>
                 </div>
                 </aside>
-            </>
+            </div>
         )}
       </main>
       
