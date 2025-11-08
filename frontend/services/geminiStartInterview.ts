@@ -129,19 +129,39 @@ export const validateCompany = async (companyName: string): Promise<{ companyExi
 export const generateInterviewQuestions = async (setupData: any) => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
+    const isCombinedInterview = setupData.interviewType === 'Combined';
+
     const schema = {
         type: Type.OBJECT,
         properties: {
-            companySpecificQuestions: {
-                type: Type.ARRAY,
-                description: "A list of 3-5 research-based or cultural fit questions relevant to the target company. If no company is specified, generate generic cultural fit questions.",
-                items: { type: Type.STRING },
-            },
-            theoryQuestions: {
-                type: Type.ARRAY,
-                description: "A list of 5-7 conceptual questions based on the role, experience, and topics provided.",
-                items: { type: Type.STRING },
-            },
+            ...(isCombinedInterview ? {
+                technicalQuestions: {
+                    type: Type.ARRAY,
+                    description: "A list of 4-5 conceptual technical questions for the Software Engineer to ask.",
+                    items: { type: Type.STRING },
+                },
+                behavioralQuestions: {
+                    type: Type.ARRAY,
+                    description: "A list of 3-4 behavioral (STAR method) questions for the Hiring Manager to ask.",
+                    items: { type: Type.STRING },
+                },
+                hrQuestions: {
+                    type: Type.ARRAY,
+                    description: "A list of 2-3 HR/cultural fit questions for the HR Specialist to ask.",
+                    items: { type: Type.STRING },
+                },
+            } : {
+                companySpecificQuestions: {
+                    type: Type.ARRAY,
+                    description: "A list of 3-5 research-based or cultural fit questions relevant to the target company. If no company is specified, generate generic cultural fit questions.",
+                    items: { type: Type.STRING },
+                },
+                theoryQuestions: {
+                    type: Type.ARRAY,
+                    description: "A list of 5-7 conceptual questions based on the role, experience, and topics provided.",
+                    items: { type: Type.STRING },
+                },
+            }),
             handsOnQuestions: {
                 type: Type.ARRAY,
                 description: "A list of 1-2 practical, scenario-based, or coding problems. For coding problems, provide a title and a detailed description.",
@@ -155,7 +175,7 @@ export const generateInterviewQuestions = async (setupData: any) => {
                 },
             },
         },
-        required: ["companySpecificQuestions", "theoryQuestions", "handsOnQuestions"],
+        required: ["handsOnQuestions"],
     };
 
     const buildPrompt = () => {
@@ -203,6 +223,13 @@ Session Details:
             let questionInstructions = '';
     
             switch (setupData.interviewType) {
+                case 'Combined':
+                    persona = 'You are an AI system controlling a panel of three interviewers: a Senior Engineer, a Hiring Manager, and an HR Specialist. Your task is to generate distinct sets of questions appropriate for each of them based on the candidate profile.';
+                    questionInstructions = `Generate questions for a 'Combined' interview:
+1.  **For the Software Engineer:** Populate \`technicalQuestions\` with conceptual questions and \`handsOnQuestions\` with a practical coding challenge, all related to the candidate's topics and experience.
+2.  **For the Hiring Manager:** Populate \`behavioralQuestions\` with situational questions that probe leadership, teamwork, and problem-solving skills using the STAR method.
+3.  **For the HR Specialist:** Populate \`hrQuestions\` with questions about motivation, cultural fit, and career goals, considering the target company if provided.`;
+                    break;
                 case 'HR':
                     persona = 'You are an experienced and empathetic HR professional conducting an initial screening interview. Your goal is to assess the candidate\'s personality, motivation, cultural fit, and basic qualifications. You should be welcoming and aim to understand the candidate\'s career aspirations and how they align with the company\'s values.';
                     questionInstructions = `Generate questions suitable for a comprehensive HR screening round:
@@ -223,7 +250,6 @@ Important: Frame questions with 'Tell me about a time when...' or 'Describe a si
                     break;
     
                 case 'Technical':
-                case 'Combined':
                 default:
                     persona = 'You are a Senior Engineer and a key technical interviewer for your team. You value clear communication, strong fundamentals, and a practical approach to problem-solving. Your goal is to accurately assess the candidate\'s technical depth, their ability to write clean and efficient code, and how they articulate their thought process.';
                     questionInstructions = `Generate a balanced set of technical interview questions for the specified profile:

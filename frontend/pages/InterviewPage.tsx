@@ -4,6 +4,7 @@ import { CameraOff } from '../icons/CameraOff';
 import { MicOn } from '../icons/MicOn';
 import { MicOff } from '../icons/MicOff';
 import { initiateLiveSession } from '../services/geminiLiveService';
+import { initiateCombinedLiveSession } from '../services/geminiLiveServiceCombined';
 
 // Icons
 const PhoneHangUpIcon = () => (
@@ -32,15 +33,18 @@ const ControlButton: React.FC<{
 
 const VideoPlaceholder = ({ name, role, number, isSpeaking }: { name: string, role: string, number: number, isSpeaking: boolean }) => (
   <div className={`w-full aspect-video bg-slate-800/50 rounded-2xl flex flex-col items-center justify-center border border-slate-700 p-4 relative shadow-lg transition-all duration-300 ${isSpeaking ? 'ring-2 ring-primary' : ''}`}>
-    <p className="text-gray-300 font-bold text-lg">{`Interviewer ${number}`}</p>
+    <div className="h-20 w-20 bg-slate-700 rounded-full flex items-center justify-center mb-3 ring-2 ring-slate-600">
+        <span className="text-3xl font-bold text-primary">{name.charAt(0)}</span>
+    </div>
     <div className="absolute bottom-3 left-3 text-sm bg-black/30 px-2 py-1 rounded-md">
-      <span className="font-semibold text-amber-500">{name} - {role}</span>
+      <p className="font-semibold text-white">{name}</p>
+      <p className="text-xs text-gray-300">{role}</p>
     </div>
   </div>
 );
 
 interface TranscriptItem {
-    speaker: 'Interviewer' | 'You';
+    speaker: string;
     text: string;
 }
 
@@ -57,17 +61,19 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [sessionStatus, setSessionStatus] = useState<'IDLE' | 'CONNECTING' | 'CONNECTED' | 'ERROR'>('IDLE');
-
+  
+  const isCombinedMode = setupData?.interviewType === 'Combined';
   const interviewersDetails = interviewerDetails || [{ name: 'Interviewer', role: 'AI' }];
 
   const [timeLeft, setTimeLeft] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const sessionManagerRef = useRef<{ close: () => void } | null>(null);
+  const sessionManagerRef = useRef<{ close: () => void; askQuestion?: (type: 'technical' | 'behavioral' | 'hr') => void; } | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [streamLoaded, setStreamLoaded] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [activeInterviewerName, setActiveInterviewerName] = useState<string | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const animationFrameIdRef = useRef<number | null>(null);
   const isSpeakingRef = useRef(false);
@@ -165,59 +171,70 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
     const startSession = async (stream: MediaStream) => {
       setSessionStatus('CONNECTING');
       
-      const theoryQs = interviewQuestions?.theoryQuestions || [];
-      const companyQs = interviewQuestions?.companySpecificQuestions || [];
-      const allQuestions = [...theoryQs, ...companyQs];
-
-      const interviewerName = interviewersDetails?.[0]?.name || 'Interviewer';
-
-      let systemInstruction;
-
-      if (allQuestions.length > 0) {
-        const questionList = allQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
-        systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${setupData.candidateName || 'there'}.
-
-Here is the list of questions you must ask in order:
-${questionList}
-
-Your instructions are as follows:
-1.  Start by greeting the candidate warmly.
-2.  Ask the questions from the list one by one, strictly in the given order.
-3.  CRITICAL RULE: Ask only ONE question at a time. After asking a question, you must wait for the candidate to provide a complete answer before you say anything else or move to the next question.
-4.  You may ask one or two short, relevant follow-up questions if the candidate's answer is unclear or incomplete, but then you must proceed to the next question on the list.
-5.  Keep your own speech concise and professional. Avoid long monologues.
-6.  After the last question, thank the candidate for their time and conclude the interview.
-
-Begin the interview now by greeting the candidate and asking the very first question from the list.`;
-      } else {
-        systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Start the interview by greeting the candidate, whose name is ${setupData.candidateName || 'there'}, and then ask them to tell you a bit about themselves. After that, continue the conversation by asking relevant interview questions based on their responses. CRITICAL RULE: Ask only ONE question at a time and wait for their full response. Keep your own speech concise.`;
-      }
-      
-      const onTranscriptionUpdate = (item: { speaker: 'Interviewer' | 'You'; text: string }) => {
-        setTranscript(prev => {
-            const newTranscript = [...prev];
-            const lastItem = newTranscript[newTranscript.length - 1];
-            if (lastItem && lastItem.speaker === item.speaker) {
-                lastItem.text = item.text;
-            } else {
-                newTranscript.push(item);
-            }
-            return newTranscript;
-        });
-        if(item.speaker === 'Interviewer') setIsAiSpeaking(true);
-      };
-
-      const onAudioFinished = () => {
-        setIsAiSpeaking(false);
-      }
-      
       try {
-        sessionManagerRef.current = await initiateLiveSession({
-          stream,
-          systemInstruction,
-          onTranscriptionUpdate,
-          onAudioFinished,
-        });
+        if (isCombinedMode) {
+            sessionManagerRef.current = await initiateCombinedLiveSession({
+                stream,
+                interviewers: interviewersDetails,
+                questions: interviewQuestions,
+                onTranscriptionUpdate: (item) => {
+                    setActiveInterviewerName(item.speaker);
+                    setTranscript(prev => {
+                        const newTranscript = [...prev];
+                        const lastItem = newTranscript[newTranscript.length - 1];
+                        if (lastItem && lastItem.speaker === item.speaker) {
+                            lastItem.text = item.text;
+                        } else {
+                            newTranscript.push(item);
+                        }
+                        return newTranscript;
+                    });
+                },
+                onAudioStateChange: (speaking) => {
+                    setIsAiSpeaking(speaking);
+                    if (!speaking) {
+                        setActiveInterviewerName(null);
+                    }
+                },
+            });
+        } else {
+             const theoryQs = interviewQuestions?.theoryQuestions || [];
+             const companyQs = interviewQuestions?.companySpecificQuestions || [];
+             const allQuestions = [...theoryQs, ...companyQs];
+             const interviewerName = interviewersDetails?.[0]?.name || 'Interviewer';
+             let systemInstruction;
+             if (allQuestions.length > 0) {
+                const questionList = allQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
+                systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${setupData.candidateName || 'there'}.
+                Here is the list of questions you must ask in order:
+                ${questionList}
+                CRITICAL RULE: Ask only ONE question at a time. After asking a question, you must wait for the candidate to provide a complete answer before you say anything else or move to the next question.
+                Begin the interview now by greeting the candidate and asking the very first question.`;
+             } else {
+                systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Start the interview by greeting the candidate, whose name is ${setupData.candidateName || 'there'}, and then ask them to tell you a bit about themselves. CRITICAL RULE: Ask only ONE question at a time and wait for their full response.`;
+             }
+
+            sessionManagerRef.current = await initiateLiveSession({
+                stream,
+                systemInstruction,
+                onTranscriptionUpdate: (item) => {
+                    setTranscript(prev => {
+                        const newTranscript = [...prev];
+                        const lastItem = newTranscript[newTranscript.length - 1];
+                        if (lastItem && lastItem.speaker === item.speaker) {
+                            lastItem.text = item.text;
+                        } else {
+                            newTranscript.push(item);
+                        }
+                        return newTranscript;
+                    });
+                    if (item.speaker === 'Interviewer') setIsAiSpeaking(true);
+                },
+                onAudioFinished: () => {
+                    setIsAiSpeaking(false);
+                },
+            });
+        }
         setSessionStatus('CONNECTED');
       } catch (error) {
         console.error("Failed to initiate live session:", error);
@@ -309,6 +326,12 @@ Begin the interview now by greeting the candidate and asking the very first ques
       streamRef.current.getTracks().forEach(track => track.stop());
     }
     onLeave();
+  };
+  
+  const handleAskQuestion = (type: 'technical' | 'behavioral' | 'hr') => {
+    if (sessionManagerRef.current?.askQuestion && !isAiSpeaking) {
+      sessionManagerRef.current.askQuestion(type);
+    }
   };
 
   const getTranscriptStatus = () => {
@@ -432,7 +455,7 @@ Begin the interview now by greeting the candidate and asking the very first ques
                 <aside className="w-[280px] bg-slate-800/50 flex flex-col border-l border-slate-700 p-4 gap-4 overflow-y-auto">
                     {interviewersDetails.map((details, index) => (
                         <div key={index} className="flex-shrink-0">
-                           <VideoPlaceholder name={details.name} role={details.role} number={index + 1} isSpeaking={isAiSpeaking} />
+                           <VideoPlaceholder name={details.name} role={details.role} number={index + 1} isSpeaking={isAiSpeaking && activeInterviewerName === details.name} />
                         </div>
                     ))}
                     <div className={`w-full aspect-video bg-black rounded-xl relative overflow-hidden border border-slate-700 shadow-lg flex-shrink-0 transition-all duration-300 ${isUserSpeaking ? 'ring-2 ring-primary ring-offset-2 ring-offset-slate-800' : ''}`}>
@@ -463,13 +486,20 @@ Begin the interview now by greeting the candidate and asking the very first ques
                     {interviewersDetails.map((details, index) => (
                     <div key={index} className={
                         interviewersDetails.length === 1 ? 'w-full max-w-xl' :
-                        interviewersDetails.length === 2 ? 'w-full md:w-1/2 max-w-sm' :
-                        'w-full md:w-1/3 max-w-sm'
+                        interviewersDetails.length <= 3 ? 'w-full md:w-1/3 max-w-sm' :
+                        'w-full md:w-1/4 max-w-xs'
                     }>
-                        <VideoPlaceholder name={details.name} role={details.role} number={index + 1} isSpeaking={isAiSpeaking} />
+                        <VideoPlaceholder name={details.name} role={details.role} number={index + 1} isSpeaking={isAiSpeaking && activeInterviewerName === details.name} />
                     </div>
                     ))}
                 </div>
+                {isCombinedMode && (
+                    <div className="flex-shrink-0 flex justify-center items-center gap-4 py-4">
+                        <button onClick={() => handleAskQuestion('technical')} disabled={isAiSpeaking} className="px-6 py-3 font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask Technical Question</button>
+                        <button onClick={() => handleAskQuestion('behavioral')} disabled={isAiSpeaking} className="px-6 py-3 font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask Behavioral Question</button>
+                        <button onClick={() => handleAskQuestion('hr')} disabled={isAiSpeaking} className="px-6 py-3 font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask HR Question</button>
+                    </div>
+                )}
                 <div className="flex-1 flex items-center justify-center min-h-0 p-4">
                     <div className={`w-full max-w-2xl aspect-video bg-black rounded-2xl relative overflow-hidden border border-slate-800 shadow-2xl transition-all duration-300 ${isUserSpeaking ? 'ring-4 ring-primary ring-offset-4 ring-offset-dark' : ''}`}>
                     {!isCameraOn && <div className="absolute inset-0 bg-slate-900 flex items-center justify-center"><p className="text-gray-400">Camera is off</p></div>}
