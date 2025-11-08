@@ -285,7 +285,21 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData }) => 
                         className="flex-1 w-full bg-transparent p-4 font-mono focus:outline-none resize-none"
                         placeholder="Write your code here..."
                     />
-                     <div className="flex-shrink-0 flex justify-end gap-4 p-3 border-t border-slate-700">
+                     <div className="flex-shrink-0 flex items-center gap-4 p-3 border-t border-slate-700">
+                        {activeTab === 'DSA' && (
+                            <a
+                                href="https://leetcode.com/problems/find-the-duplicate-number/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-4 py-2 text-sm font-semibold bg-yellow-600 text-white rounded-md hover:bg-yellow-500 transition-colors flex items-center gap-2"
+                            >
+                                Solve on Leetcode
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                            </a>
+                        )}
+                        <div className="flex-grow"></div>
                         <button onClick={() => setCode("")} className="px-4 py-2 text-sm font-semibold bg-slate-700 rounded-md hover:bg-slate-600 transition-colors">Clear all</button>
                         <button onClick={() => alert('Validating...')} className="px-4 py-2 text-sm font-semibold bg-primary text-white rounded-md hover:bg-blue-500 transition-colors">Validate answer</button>
                     </div>
