@@ -146,6 +146,44 @@ Is this a known company? Please respond with a simple 'companyExists' boolean an
 
 
 /**
+ * Generates relevant interview topics for a given role and experience.
+ * @param role The job title/role.
+ * @param experience The years of experience.
+ * @returns A comma-separated string of topics.
+ */
+export const generateTopicsForRole = async (role: string, experience: string): Promise<string> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+
+    const prompt = `
+        As an expert career coach, I need you to generate a list of key topics for a mock interview.
+        Please provide a comma-separated list of 5 to 7 of the most important technical and/or behavioral topics for the following profile.
+        The output should be a single string, with topics separated by commas. Do not add any introductory text like "Here are the topics:".
+
+        - Job Role: "${role}"
+        - Years of Experience: "${experience || 'not specified'}"
+
+        Example output for 'Senior Frontend Developer' with '5 years experience':
+        React Hooks, TypeScript, State Management (Redux/Zustand), Web Performance Optimization, System Design for Frontend, Accessibility (a11y), Behavioral Questions
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+
+        const text = response.text.trim();
+        // Clean up the response to ensure it's a clean, comma-separated list.
+        return text.replace(/^- \s*/gm, '').replace(/\n/g, ', ').replace(/, ,/g, ',').trim();
+
+    } catch (error) {
+        console.error("Error generating topics with Gemini API:", error);
+        throw new Error("Failed to generate topics.");
+    }
+};
+
+
+/**
  * Generates interview questions using the Gemini API based on setup data.
  * @param setupData The configuration data for the interview session.
  * @returns A structured object of interview questions.
