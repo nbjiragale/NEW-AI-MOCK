@@ -134,10 +134,10 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
         <button
             type="button"
             onClick={() => setPracticeOption(option)}
-            className={`flex-1 px-4 py-3 text-sm font-semibold text-center transition-colors duration-200 rounded-md focus:outline-none ${
+            className={`flex-1 px-4 py-3 text-sm font-semibold text-center transition-all duration-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-slate-900 ${
                 practiceOption === option
-                    ? 'bg-primary text-white'
-                    : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'text-gray-300 hover:bg-slate-800/50 hover:text-white'
             }`}
         >
             {label}
@@ -190,7 +190,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
     }
 
     return (
-        <div className="p-8 bg-slate-800/50 rounded-b-lg rounded-r-lg border border-slate-700 border-t-0">
+        <div className="p-6 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
                 <FormSelect 
                     label="Interview Type" 
@@ -205,7 +205,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                 </FormSelect>
                 <div>
                     <label className="block mb-3 text-sm font-medium text-gray-300">Choose Practice Type</label>
-                    <div className="flex space-x-2 bg-slate-900/50 p-1 rounded-lg">
+                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 bg-slate-900/50 p-1.5 rounded-xl">
                         <OptionButton option="topic" label="By Topic Name" />
                         <OptionButton option="list" label="By List of Questions" />
                         <OptionButton option="confidence" label="Build Confidence" />

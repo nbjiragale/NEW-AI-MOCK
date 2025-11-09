@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import ManualEntryForm from '../components/ManualEntryForm';
 import ResumeUploadForm from '../components/ResumeUploadForm';
 import PracticeModeForm from '../components/PracticeModeForm';
+import { PencilIcon } from '../icons/PencilIcon';
+import { UploadIcon } from '../icons/UploadIcon';
+import { TargetIcon } from '../icons/TargetIcon';
+import { SettingsIcon } from '../icons/SettingsIcon';
 
 type Tab = 'manual' | 'resume' | 'practice';
 
@@ -24,51 +28,57 @@ const SetupPage: React.FC<SetupPageProps> = ({ initialData, onStart }) => {
   const [activeTab, setActiveTab] = useState<Tab>(getInitialTab());
 
   const renderTabContent = () => {
-    switch (activeTab) {
-      case 'manual':
-        return <ManualEntryForm initialData={initialData?.type === 'Manual Entry' ? initialData : undefined} onSubmit={onStart} />;
-      case 'resume':
-        return <ResumeUploadForm initialData={initialData?.type === 'By Resume' ? initialData : undefined} onSubmit={onStart} />;
-      case 'practice':
-         return <PracticeModeForm initialData={initialData?.type === 'Practice Mode' ? initialData : undefined} onSubmit={onStart} />;
-      default:
-        return null;
-    }
+    const content = {
+      manual: <ManualEntryForm initialData={initialData?.type === 'Manual Entry' ? initialData : undefined} onSubmit={onStart} />,
+      resume: <ResumeUploadForm initialData={initialData?.type === 'By Resume' ? initialData : undefined} onSubmit={onStart} />,
+      practice: <PracticeModeForm initialData={initialData?.type === 'Practice Mode' ? initialData : undefined} onSubmit={onStart} />,
+    };
+    return (
+      <div key={activeTab} className="animate-fade-in-up" style={{ animationDuration: '0.5s' }}>
+        {content[activeTab]}
+      </div>
+    );
   };
   
-  const TabButton: React.FC<{tabName: Tab, label: string}> = ({ tabName, label }) => (
+  const TabButton: React.FC<{ tabName: Tab; label: string; icon: React.ReactNode }> = ({ tabName, label, icon }) => (
     <button
       onClick={() => setActiveTab(tabName)}
-      className={`px-6 py-3 font-semibold rounded-t-lg transition-colors duration-300 focus:outline-none ${
+      className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-semibold rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-slate-900 ${
         activeTab === tabName
-          ? 'bg-slate-800/50 border-b-2 border-primary text-white'
-          : 'text-gray-400 hover:text-white'
+          ? 'bg-slate-700 text-white shadow-md'
+          : 'text-gray-400 hover:bg-slate-800/50 hover:text-white'
       }`}
     >
-      {label}
+      {icon}
+      <span>{label}</span>
     </button>
   );
 
   return (
-    <section className="py-16 md:py-24">
-      <div className="container mx-auto px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-white">Interview Setup</h1>
-            <p className="mt-4 text-lg text-gray-400">Configure your mock interview session.</p>
-          </div>
+    <section className="min-h-screen py-16 md:py-24 bg-dark relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-slate-800/[0.1] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
+        <div className="container mx-auto px-6 relative z-10">
+            <div className="max-w-4xl mx-auto">
+                <div className="text-center mb-12">
+                    <div className="flex justify-center items-center gap-3">
+                        <SettingsIcon className="h-8 w-8 text-primary" />
+                        <h1 className="text-4xl md:text-5xl font-extrabold text-white">Interview Setup</h1>
+                    </div>
+                    <p className="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">Choose your preferred method to configure the mock interview session.</p>
+                </div>
 
-          <div className="border-b border-slate-700 flex space-x-2">
-            <TabButton tabName="manual" label="Manual Entry" />
-            <TabButton tabName="resume" label="By Resume" />
-            <TabButton tabName="practice" label="Practice Mode" />
-          </div>
-
-          <div className="mt-8">
-            {renderTabContent()}
-          </div>
+                <div className="bg-slate-900/50 border border-slate-700 rounded-xl shadow-2xl shadow-black/20 backdrop-blur-lg">
+                    <div className="p-2">
+                        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 bg-slate-800/60 p-1.5 rounded-xl">
+                            <TabButton tabName="manual" label="Manual Entry" icon={<PencilIcon className="h-5 w-5" />} />
+                            <TabButton tabName="resume" label="By Resume" icon={<UploadIcon className="h-5 w-5" />} />
+                            <TabButton tabName="practice" label="Practice Mode" icon={<TargetIcon className="h-5 w-5" />} />
+                        </div>
+                    </div>
+                    {renderTabContent()}
+                </div>
+            </div>
         </div>
-      </div>
     </section>
   );
 };

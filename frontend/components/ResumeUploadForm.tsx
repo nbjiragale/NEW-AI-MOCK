@@ -133,7 +133,7 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
     const canSubmit = !!file; // Can only submit if a new file is staged for upload.
 
     return (
-        <div className="relative p-8 bg-slate-800/50 rounded-b-lg rounded-r-lg border border-slate-700 border-t-0">
+        <div className="relative p-6 md:p-8">
             {isLoading && (
                 <div className="absolute inset-0 bg-dark/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-lg">
                     <svg className="animate-spin h-8 w-8 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

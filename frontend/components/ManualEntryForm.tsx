@@ -52,7 +52,7 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
     };
 
     return (
-        <div className="p-8 bg-slate-800/50 rounded-b-lg rounded-r-lg border border-slate-700 border-t-0">
+        <div className="p-6 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormInput label="Candidate Name" name="candidateName" type="text" placeholder="e.g., Jane Doe" defaultValue={initialData?.candidateName} />
