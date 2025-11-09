@@ -158,7 +158,7 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
                                 id="topics"
                                 value={topics}
                                 onChange={(e) => setTopics(e.target.value)}
-                                rows={3}
+                                rows={4}
                                 className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 transition"
                                 placeholder="e.g., React Hooks, TypeScript, System Design..."
                                 required
