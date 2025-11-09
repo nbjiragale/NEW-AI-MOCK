@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import HeroSection from './components/HeroSection';
 import FeaturesSection from './components/FeaturesSection';
@@ -20,6 +20,10 @@ const App: React.FC = () => {
   const [interviewerDetails, setInterviewerDetails] = useState<any>(null);
   const [interviewTranscript, setInterviewTranscript] = useState<any[] | null>(null);
   const [interviewDuration, setInterviewDuration] = useState<number | null>(null);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [page]);
 
   const goToSetup = () => {
     setSetupData(null); 
