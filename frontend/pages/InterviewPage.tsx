@@ -60,7 +60,7 @@ const ControlButton: React.FC<{
 );
 
 const VideoPlaceholder = ({ name, role, isSpeaking }: { name: string, role: string, isSpeaking: boolean }) => (
-    <div className={`w-full aspect-video bg-black rounded-xl flex flex-col items-center justify-center border transition-all duration-300 p-3 shadow-lg relative overflow-hidden ${isSpeaking ? 'ring-2 ring-primary border-primary' : 'border-slate-700'}`}>
+    <div className={`w-full h-full bg-black rounded-xl flex flex-col items-center justify-center border transition-all duration-300 p-3 shadow-lg relative overflow-hidden min-h-0 ${isSpeaking ? 'ring-2 ring-primary border-primary' : 'border-slate-700'}`}>
         <div className="h-16 w-16 bg-slate-700 rounded-full flex items-center justify-center ring-4 ring-slate-600 mb-2">
             <span className="text-2xl font-bold text-primary">{name.charAt(0)}</span>
         </div>
@@ -642,28 +642,11 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
             </div>
         ) : isCombinedMode ? (
             <div key="combined-call-view" className="flex flex-1 animate-fade-in-up" style={{ animationDuration: '0.5s' }}>
-                <div className="flex-1 flex flex-col items-center justify-center bg-black/90 p-4">
-                    <div className="text-center text-gray-500">
-                         <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        <p className="mt-4 text-lg">Main Stage</p>
-                        <p className="text-sm">Screensharing or content will appear here.</p>
-                        <div className="mt-8 flex justify-center items-center gap-4 py-4">
-                            <button onClick={() => handleAskQuestion('technical')} disabled={isAiSpeaking} className="px-6 py-3 font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask Technical Question</button>
-                            <button onClick={() => handleAskQuestion('behavioral')} disabled={isAiSpeaking} className="px-6 py-3 font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask Behavioral Question</button>
-                            <button onClick={() => handleAskQuestion('hr')} disabled={isAiSpeaking} className="px-6 py-3 font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask HR Question</button>
-                        </div>
-                    </div>
-                </div>
-                <aside className="w-[350px] bg-slate-900 flex flex-col border-l border-slate-700">
-                    <div className="p-4 flex-1 flex flex-col gap-4 overflow-y-auto">
-                        {interviewersDetails.map((details, index) => (
-                           <VideoPlaceholder key={index} name={details.name} role={details.role} isSpeaking={isAiSpeaking && activeInterviewerName === details.name} />
-                        ))}
-                        <div className={`w-full aspect-video bg-black rounded-xl relative overflow-hidden border border-slate-700 shadow-lg flex-shrink-0 transition-all duration-300 ${isUserSpeaking ? 'ring-2 ring-primary ring-offset-2 ring-offset-slate-900' : ''}`}>
-                             {!isCameraOn && (
-                                <div className="absolute inset-0 bg-black flex items-end justify-start p-3">
+                <div className="flex-1 flex flex-col bg-black min-w-0 min-h-0">
+                    <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-4 p-4 overflow-hidden">
+                        <div className={`w-full h-full bg-black rounded-xl relative overflow-hidden border border-slate-700 shadow-lg flex-shrink-0 transition-all duration-300 min-h-0 ${isUserSpeaking ? 'ring-2 ring-primary ring-offset-2 ring-offset-black' : ''}`}>
+                            {!isCameraOn && (
+                                <div className="absolute inset-0 bg-slate-900 flex items-end justify-start p-3">
                                     <p className="font-semibold text-white text-sm">{setupData?.candidateName || 'User'}</p>
                                 </div>
                             )}
@@ -674,14 +657,47 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                                 </div>
                             )}
                         </div>
-                        <div className="flex justify-center gap-4 py-1">
-                            <button onClick={toggleMic} disabled={isAiSpeaking} aria-label={isMicOn ? 'Mute microphone' : 'Unmute microphone'} className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isMicOn ? 'bg-slate-700 hover:bg-slate-600' : 'bg-red-600 hover:bg-red-500'} ${isAiSpeaking ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                {isMicOn ? <MicOn className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
-                            </button>
-                            <button onClick={toggleCamera} aria-label={isCameraOn ? 'Turn off camera' : 'Turn on camera'} className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${isCameraOn ? 'bg-slate-700 hover:bg-slate-600' : 'bg-red-600 hover:bg-red-500'}`}>
-                                {isCameraOn ? <CameraOn className="h-6 w-6" /> : <CameraOff className="h-6 w-6" />}
-                            </button>
+
+                        {interviewersDetails.map((details, index) => (
+                            <VideoPlaceholder key={index} name={details.name} role={details.role} isSpeaking={isAiSpeaking && activeInterviewerName === details.name} />
+                        ))}
+                    </div>
+
+                    <div className="flex-shrink-0 p-3 bg-dark/50 border-t border-slate-800 flex justify-center items-center gap-3">
+                        <button onClick={() => handleAskQuestion('technical')} disabled={isAiSpeaking} className="px-4 py-2 text-sm font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask Technical</button>
+                        <button onClick={() => handleAskQuestion('behavioral')} disabled={isAiSpeaking} className="px-4 py-2 text-sm font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask Behavioral</button>
+                        <button onClick={() => handleAskQuestion('hr')} disabled={isAiSpeaking} className="px-4 py-2 text-sm font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask HR</button>
+
+                        <div className="w-px h-8 bg-slate-700 mx-2"></div>
+
+                        <ControlButton onClick={toggleMic} active={isMicOn} ariaLabel={isMicOn ? 'Mute microphone' : 'Unmute microphone'} disabled={isAiSpeaking}>
+                            {isMicOn ? <MicOn className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
+                        </ControlButton>
+                        <ControlButton onClick={toggleCamera} active={isCameraOn} ariaLabel={isCameraOn ? 'Turn off camera' : 'Turn on camera'}>
+                            {isCameraOn ? <CameraOn className="h-6 w-6" /> : <CameraOff className="h-6 w-6" />}
+                        </ControlButton>
+                    </div>
+                </div>
+
+                <aside className="w-[350px] bg-slate-800/50 flex flex-col border-l border-slate-700">
+                    <div className="p-4 border-b border-slate-700 flex-shrink-0">
+                        <h2 className="text-lg font-semibold">Live Transcript</h2>
+                    </div>
+                    <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                        {transcriptStatusMessage && (
+                          <div className="flex justify-center items-center h-full">
+                            <p className="text-gray-400 text-center">{transcriptStatusMessage}</p>
+                          </div>
+                        )}
+                        {transcript.map((item, index) => (
+                        <div key={index} className={`flex flex-col ${item.speaker === 'You' ? 'items-end' : 'items-start'}`}>
+                            <div className={`rounded-lg px-3 py-2 max-w-[90%] ${item.speaker === 'You' ? 'bg-primary text-white' : 'bg-slate-700'}`}>
+                            <p className="text-xs font-bold mb-1">{item.speaker}</p>
+                            <p className="text-sm">{item.text}</p>
+                            </div>
                         </div>
+                        ))}
+                        <div ref={transcriptEndRef} />
                     </div>
                     <div className="p-4 border-t border-slate-700 flex-shrink-0">
                         <button onClick={handleLeaveCall} className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
