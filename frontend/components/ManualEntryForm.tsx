@@ -21,7 +21,7 @@ const FormInput: React.FC<{
     required?: boolean;
 }> = ({ label, type, placeholder, name, defaultValue, value, onChange, required = false }) => (
     <div>
-        <label htmlFor={name} className="block mb-2 text-sm font-medium text-gray-300">{label}</label>
+        <label htmlFor={name} className="block mb-2 text-base font-medium text-gray-300">{label}</label>
         <input
             type={type}
             name={name}
@@ -29,7 +29,7 @@ const FormInput: React.FC<{
             defaultValue={defaultValue}
             value={value}
             onChange={onChange}
-            className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 transition"
+            className="bg-slate-800 border border-slate-700 text-white text-base rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 transition"
             placeholder={placeholder}
             required={required}
         />
@@ -38,14 +38,14 @@ const FormInput: React.FC<{
 
 const FormSelect: React.FC<{ label: string; name: string; children: React.ReactNode; defaultValue?: string; value?: string; onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void }> = ({ label, name, children, defaultValue, value, onChange }) => (
     <div>
-        <label htmlFor={name} className="block mb-2 text-sm font-medium text-gray-300">{label}</label>
+        <label htmlFor={name} className="block mb-2 text-base font-medium text-gray-300">{label}</label>
         <select
             id={name}
             name={name}
             defaultValue={defaultValue}
             value={value}
             onChange={onChange}
-            className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
+            className="bg-slate-800 border border-slate-700 text-white text-base rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
         >
             {children}
         </select>
@@ -141,12 +141,12 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
                         
                         <div>
                             <div className="flex justify-between items-center mb-2">
-                                <label htmlFor="topics" className="block text-sm font-medium text-gray-300">Main Topics to Focus On</label>
+                                <label htmlFor="topics" className="block text-base font-medium text-gray-300">Main Topics to Focus On</label>
                                 <button
                                     type="button"
                                     onClick={handleGenerateTopics}
                                     disabled={isGenerating || !role.trim()}
-                                    className="flex items-center gap-1.5 text-xs text-primary/90 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
+                                    className="flex items-center gap-1.5 text-sm text-primary/90 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
                                     aria-label="Generate topics based on role"
                                 >
                                     {isGenerating ? <SpinnerIcon className="h-4 w-4" /> : <SparkleIcon className="h-4 w-4 transition-transform group-hover:scale-110" />}
@@ -159,7 +159,7 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
                                 value={topics}
                                 onChange={(e) => setTopics(e.target.value)}
                                 rows={4}
-                                className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 transition"
+                                className="bg-slate-800 border border-slate-700 text-white text-base rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 transition"
                                 placeholder="e.g., React Hooks, TypeScript, System Design..."
                                 required
                             />

@@ -3,14 +3,14 @@ import { analyzeResume } from '../services/geminiForResumeAnalysis';
 
 const FormSelect: React.FC<{ label: string; name: string; children: React.ReactNode; defaultValue?: string; value?: string; onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void }> = ({ label, name, children, defaultValue, value, onChange }) => (
     <div>
-        <label htmlFor={name} className="block mb-2 text-sm font-medium text-gray-300">{label}</label>
+        <label htmlFor={name} className="block mb-2 text-base font-medium text-gray-300">{label}</label>
         <select
             id={name}
             name={name}
             defaultValue={defaultValue}
             value={value}
             onChange={onChange}
-            className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
+            className="bg-slate-800 border border-slate-700 text-white text-base rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
         >
             {children}
         </select>
@@ -19,13 +19,13 @@ const FormSelect: React.FC<{ label: string; name: string; children: React.ReactN
 
 const FormInput: React.FC<{ label: string; type: string; placeholder: string; name: string; defaultValue?: string }> = ({ label, type, placeholder, name, defaultValue }) => (
     <div>
-        <label htmlFor={name} className="block mb-2 text-sm font-medium text-gray-300">{label}</label>
+        <label htmlFor={name} className="block mb-2 text-base font-medium text-gray-300">{label}</label>
         <input
             type={type}
             name={name}
             id={name}
             defaultValue={defaultValue || ''}
-            className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 transition"
+            className="bg-slate-800 border border-slate-700 text-white text-base rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 transition"
             placeholder={placeholder}
         />
     </div>
@@ -146,7 +146,7 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
             )}
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                    <label className="block mb-2 text-sm font-medium text-gray-300">Upload Resume</label>
+                    <label className="block mb-2 text-base font-medium text-gray-300">Upload Resume</label>
                     <div
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
@@ -167,13 +167,13 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
                                  <svg xmlns="http://www.w3.org/2000/svg" className={`mx-auto h-10 w-10 ${file ? 'text-green-500' : 'text-primary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                  </svg>
-                                 <p className="mt-2 text-sm text-white">{displayFile.name}</p>
-                                 <p className="text-xs text-gray-400">({typeof displayFile.size === 'number' ? (displayFile.size / 1024).toFixed(2) + ' KB' : displayFile.size})</p>
-                                 {initialFile && !file && <p className="text-xs text-yellow-400 mt-2">Please re-upload this file to continue.</p>}
+                                 <p className="mt-2 text-base text-white">{displayFile.name}</p>
+                                 <p className="text-sm text-gray-400">({typeof displayFile.size === 'number' ? (displayFile.size / 1024).toFixed(2) + ' KB' : displayFile.size})</p>
+                                 {initialFile && !file && <p className="text-sm text-yellow-400 mt-2">Please re-upload this file to continue.</p>}
                                  <button
                                      type="button"
                                      onClick={(e) => { e.stopPropagation(); removeFile(); }}
-                                     className="mt-2 text-xs text-red-500 hover:text-red-400"
+                                     className="mt-2 text-sm text-red-500 hover:text-red-400"
                                      disabled={isLoading}
                                  >
                                      Remove file
@@ -184,8 +184,8 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
                                 <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                 </svg>
-                                <p className="mt-2 text-sm text-gray-400"><span className="font-semibold text-primary">Click to upload</span> or drag and drop</p>
-                                <p className="text-xs text-gray-500">PDF, DOC, DOCX, or TXT</p>
+                                <p className="mt-2 text-base text-gray-400"><span className="font-semibold text-primary">Click to upload</span> or drag and drop</p>
+                                <p className="text-sm text-gray-500">PDF, DOC, DOCX, or TXT</p>
                             </div>
                         )}
                     </div>
