@@ -59,6 +59,27 @@ const ControlButton: React.FC<{
   </button>
 );
 
+// **Helper for mic/cam button state**
+const ToggleControlButton: React.FC<{
+    onClick: () => void;
+    active: boolean;
+    children: React.ReactNode;
+    ariaLabel: string;
+    disabled?: boolean;
+  }> = ({ onClick, active, children, ariaLabel, disabled }) => (
+    <button
+      onClick={onClick}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      className={`w-14 h-14 flex items-center justify-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black/50 focus:ring-primary text-white ${
+        active ? 'bg-slate-700/80 hover:bg-slate-600/80' : 'bg-red-600/80 hover:bg-red-500/80'
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${active ? 'bg-slate-700/80 hover:bg-slate-600/80' : 'bg-red-600/80 hover:bg-red-500/80'}`}
+    >
+      {children}
+    </button>
+  );
+
+
 const VideoPlaceholder = ({ name, role, isSpeaking }: { name: string, role: string, isSpeaking: boolean }) => (
     <div className={`w-full h-full bg-black rounded-xl flex flex-col items-center justify-center border transition-all duration-300 p-3 shadow-lg relative overflow-hidden min-h-0 ${isSpeaking ? 'ring-2 ring-primary border-primary' : 'border-slate-700'}`}>
         <div className="h-16 w-16 bg-slate-700 rounded-full flex items-center justify-center ring-4 ring-slate-600 mb-2">
@@ -245,31 +266,31 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
             await controller.start(stream);
             sessionManagerRef.current = controller;
         } else {
-             const theoryQs = interviewQuestions?.theoryQuestions || [];
-             const companyQs = interviewQuestions?.companySpecificQuestions || [];
-             const allQuestions = [...theoryQs, ...companyQs];
-             
-             const candidateName = setupData.candidateName || 'there';
-             const interviewerName = interviewersDetails?.[0]?.name || 'Interviewer';
-             const interviewerRole = interviewersDetails?.[0]?.role || 'hiring manager';
-             const companyName = setupData.targetCompany || 'our company';
-             const experienceYears = Math.floor(Math.random() * 3) + 4; // 4, 5, or 6
+            const theoryQs = interviewQuestions?.theoryQuestions || [];
+            const companyQs = interviewQuestions?.companySpecificQuestions || [];
+            const allQuestions = [...theoryQs, ...companyQs];
+            
+            const candidateName = setupData.candidateName || 'there';
+            const interviewerName = interviewersDetails?.[0]?.name || 'Interviewer';
+            const interviewerRole = interviewersDetails?.[0]?.role || 'hiring manager';
+            const companyName = setupData.targetCompany || 'our company';
+            const experienceYears = Math.floor(Math.random() * 3) + 4; // 4, 5, or 6
 
-             const intro = `Begin the interview now. First, greet the candidate, ${candidateName}, by name. Then, introduce yourself. Say something like: "Hi ${candidateName}, I'm ${interviewerName}. I'll be interviewing you today. I'm a ${interviewerRole} at ${companyName} and I've been here for about ${experienceYears} years."`;
-             
-             let systemInstruction;
-             if (allQuestions.length > 0) {
-                const questionList = allQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
-                systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${candidateName}.
-                Here is the list of questions you must ask in order:
-                ${questionList}
-                CRITICAL RULE: Ask only ONE question at a time. After asking a question, you must wait for the candidate to provide a complete answer before you say anything else or move to the next question.
-                ${intro} After your introduction, ask a simple conversational question like "How are you doing today?" or "Shall we begin?". Wait for their response, and then you can proceed with the very first question from your list.`;
-             } else {
-                systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${candidateName}.
-                ${intro} After your introduction, ask a simple conversational question like "How are you doing today?" or "Shall we begin?". Wait for their response, and then you can ask the candidate to tell you a bit about themselves.
-                CRITICAL RULE: Ask only ONE question at a time and wait for their full response.`;
-             }
+            const intro = `Begin the interview now. First, greet the candidate, ${candidateName}, by name. Then, introduce yourself. Say something like: "Hi ${candidateName}, I'm ${interviewerName}. I'll be interviewing you today. I'm a ${interviewerRole} at ${companyName} and I've been here for about ${experienceYears} years."`;
+            
+            let systemInstruction;
+            if (allQuestions.length > 0) {
+              const questionList = allQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
+              systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${candidateName}.
+              Here is the list of questions you must ask in order:
+              ${questionList}
+              CRITICAL RULE: Ask only ONE question at a time. After asking a question, you must wait for the candidate to provide a complete answer before you say anything else or move to the next question.
+              ${intro} After your introduction, ask a simple conversational question like "How are you doing today?" or "Shall we begin?". Wait for their response, and then you can proceed with the very first question from your list.`;
+            } else {
+              systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${candidateName}.
+              ${intro} After your introduction, ask a simple conversational question like "How are you doing today?" or "Shall we begin?". Wait for their response, and then you can ask the candidate to tell you a bit about themselves.
+              CRITICAL RULE: Ask only ONE question at a time and wait for their full response.`;
+            }
 
             sessionManagerRef.current = await initiateLiveSession({
                 stream,
@@ -440,7 +461,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
       case 'ERROR':
         return 'Connection failed. Please try leaving and starting a new session.';
       default:
-         return 'Initializing...';
+        return 'Initializing...';
     }
   }
   const transcriptStatusMessage = getTranscriptStatus();
@@ -489,33 +510,39 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
 
   return (
     <div className="bg-dark h-screen w-screen flex flex-col text-white font-sans">
-      <header className="p-4 border-b border-slate-800 flex-shrink-0">
-        <h1 className="text-xl font-bold text-white">InterviewAI</h1>
-      </header>
+      {/* ======================================================================
+      IMPROVEMENT 1: Unified Header Bar
+      ======================================================================
+      */}
+      <header className="p-3 border-b border-slate-800 flex-shrink-0 bg-slate-900/50 flex justify-between items-center">
+        {/* Left Side */}
+        <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold text-white">InterviewAI</h1>
+            
+            {isCodingMode && (
+                <>
+                    <div className="w-px h-6 bg-slate-700 hidden md:block"></div>
+                    <button onClick={() => setIsCodingMode(false)} className="px-3 py-2 text-sm font-semibold bg-green-600 rounded-md hover:bg-green-500 transition-colors text-white">
+                        Back to the call
+                    </button>
+                    {availableCategories.length > 0 && (
+                        <div className="hidden md:flex items-center border border-slate-700 rounded-md p-0.5">
+                            {availableCategories.map(cat => (
+                                <button 
+                                    key={cat} 
+                                    onClick={() => handleCategoryClick(cat)}
+                                    className={`px-4 py-1.5 text-sm rounded-md transition-colors ${activeCategory === cat ? 'bg-slate-700 text-white' : 'text-gray-400 hover:bg-slate-800'}`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
 
-      <div className="p-3 border-b border-slate-800 flex-shrink-0 bg-slate-900/50 flex justify-between items-center">
-        {isCodingMode ? (
-            <div className="flex items-center gap-4">
-                <button onClick={() => setIsCodingMode(false)} className="px-3 py-2 text-sm font-semibold bg-green-600 rounded-md hover:bg-green-500 transition-colors text-white">
-                    Back to the call
-                </button>
-                {availableCategories.length > 0 && (
-                    <div className="flex items-center border border-slate-700 rounded-md p-0.5">
-                        {availableCategories.map(cat => (
-                            <button 
-                                key={cat} 
-                                onClick={() => handleCategoryClick(cat)}
-                                className={`px-4 py-1.5 text-sm rounded-md transition-colors ${activeCategory === cat ? 'bg-slate-700 text-white' : 'text-gray-400 hover:bg-slate-800'}`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div>
-        ) : (
-            <div className="flex-1" />
-        )}
+        {/* Right Side */}
         <div className="flex justify-end items-center gap-4">
             {!isCodingMode && canShowHandsOnButton && (
                 <div className="relative group">
@@ -536,241 +563,284 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                 <span className="font-mono font-semibold tracking-wider text-white">{formatTime(timeLeft)}</span>
             </div>
         </div>
-      </div>
+      </header>
       
       <main className="flex flex-1 overflow-hidden">
         {isCodingMode ? (
-            <div key="coding-view" className="flex flex-1 animate-fade-in-up" style={{ animationDuration: '0.5s' }}>
-                {/* Question Panel */}
-                <aside className={`bg-slate-900 flex flex-col transition-all duration-300 ease-in-out relative border-r border-slate-700 ${isQuestionCollapsed ? 'w-12' : 'w-1/3'}`}>
-                    <button onClick={() => setIsQuestionCollapsed(!isQuestionCollapsed)} className="absolute top-1/2 -translate-y-1/2 -right-3.5 z-10 w-7 h-7 bg-slate-700 hover:bg-primary rounded-full flex items-center justify-center transition-colors">
-                        <span className="font-bold">{isQuestionCollapsed ? '>' : '<'}</span>
-                    </button>
-                    {activeHandsOnQuestion && (
+          <div key="coding-view" className="flex flex-1 animate-fade-in-up" style={{ animationDuration: '0.5s' }}>
+              {/* Question Panel */}
+              <aside className={`bg-slate-900 flex flex-col transition-all duration-300 ease-in-out relative border-r border-slate-700 ${isQuestionCollapsed ? 'w-12' : 'w-1/3'}`}>
+                  <button onClick={() => setIsQuestionCollapsed(!isQuestionCollapsed)} className="absolute top-1/2 -translate-y-1/2 -right-3.5 z-10 w-7 h-7 bg-slate-700 hover:bg-primary rounded-full flex items-center justify-center transition-colors">
+                      <span className="font-bold">{isQuestionCollapsed ? '>' : '<'}</span>
+                  </button>
+                  {activeHandsOnQuestion && (
                       <div className={`p-6 transition-opacity duration-200 h-full overflow-y-auto ${isQuestionCollapsed ? 'opacity-0' : 'opacity-100'}`}>
                           <h3 className="text-lg font-semibold text-primary mb-4">{activeHandsOnQuestion.title}</h3>
                           <p className="text-gray-300 whitespace-pre-wrap text-sm leading-relaxed">{activeHandsOnQuestion.description}</p>
                       </div>
-                    )}
-                </aside>
+                  )}
+              </aside>
 
-                {/* Editor Panel */}
-                <section className="flex-1 flex flex-col bg-slate-900/20">
-                     <div className="flex-shrink-0 flex justify-end items-center gap-2 p-2 border-b border-slate-700">
-                        <span className="text-xs text-gray-400">Zoom:</span>
-                        <button onClick={() => setFontSize(s => Math.max(10, s - 1))} className="w-6 h-6 rounded bg-slate-700 hover:bg-slate-600">-</button>
-                        <button onClick={() => setFontSize(s => Math.min(24, s + 1))} className="w-6 h-6 rounded bg-slate-700 hover:bg-slate-600">+</button>
-                    </div>
-                    <textarea 
-                        value={codes[activeCategory] || ''} 
-                        onChange={handleCodeChange} 
-                        style={{ fontSize: `${fontSize}px` }}
-                        className="flex-1 w-full bg-transparent p-4 font-mono focus:outline-none resize-none"
-                        placeholder={getPlaceholderForCategory()}
-                    />
-                     <div className="flex-shrink-0 flex items-center gap-4 p-3 border-t border-slate-700">
-                        {activeCategory === 'DSA' && (
-                             <button
-                                onClick={() => setShowLeetcodeModal(true)}
-                                className="px-4 py-2 text-sm font-semibold bg-yellow-600 text-white rounded-md hover:bg-yellow-500 transition-colors flex items-center gap-2"
-                            >
-                                Solve on Leetcode
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                </svg>
-                            </button>
-                        )}
-                        <div className="flex-grow flex items-center gap-2">
-                            {validationResult && (
-                                <div className={`flex items-center gap-2 p-2 rounded-md text-sm animate-fade-in-up ${
-                                    validationResult.isCorrect === true ? 'bg-green-900/50 text-green-300' : 
-                                    validationResult.isCorrect === false ? 'bg-red-900/50 text-red-300' :
-                                    'bg-yellow-900/50 text-yellow-300'
-                                }`}>
-                                    {validationResult.isCorrect === true && <CheckIcon />}
-                                    {validationResult.isCorrect === false && <CrossIcon />}
-                                    <span>{validationResult.feedback}</span>
-                                    {validationResult.isCorrect === false && validationResult.hint && (
-                                        <div className="relative group">
-                                            <HintIcon />
-                                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-72 hidden group-hover:block bg-slate-900 text-white text-sm rounded py-2 px-3 shadow-lg border border-slate-700 z-10">
-                                                <strong>Hint:</strong> {validationResult.hint}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                        <button onClick={() => { setCodes(prev => ({ ...prev, [activeCategory]: '' })); setValidationResult(null); }} className="px-4 py-2 text-sm font-semibold bg-slate-700 rounded-md hover:bg-slate-600 transition-colors">Clear</button>
-                        <button onClick={handleValidateAnswer} disabled={isValidating} className="px-4 py-2 text-sm font-semibold bg-primary text-white rounded-md hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center justify-center w-32">
-                            {isValidating ? (
-                                <SpinnerIcon />
-                            ) : (
-                                'Validate answer'
-                            )}
-                        </button>
-                    </div>
-                </section>
-
-                {/* Video & Controls Sidebar */}
-                <aside className="w-[280px] bg-slate-800/50 flex flex-col border-l border-slate-700 p-4 gap-4 overflow-y-auto">
-                    {interviewersDetails.map((details, index) => (
-                        <div key={index} className="flex-shrink-0">
-                           <VideoPlaceholder name={details.name} role={details.role} isSpeaking={isAiSpeaking && activeInterviewerName === details.name} />
-                        </div>
-                    ))}
-                    <div className={`w-full aspect-video bg-black rounded-xl relative overflow-hidden border border-slate-700 shadow-lg flex-shrink-0 transition-all duration-300 ${isUserSpeaking ? 'ring-2 ring-primary ring-offset-2 ring-offset-slate-800' : ''}`}>
-                         {!isCameraOn && <div className="absolute inset-0 bg-slate-900 flex items-end justify-start p-3"><p className="font-semibold text-white text-sm">{setupData?.candidateName || 'User'}</p></div>}
-                        <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transition-opacity ${isCameraOn ? 'opacity-100' : 'opacity-0'}`} />
-                         {isCameraOn && <div className="absolute bottom-2 left-2 text-xs bg-black/40 px-2 py-0.5 rounded">
-                            <span className="font-semibold text-white">{setupData?.candidateName || 'User'}</span>
-                        </div>}
-                    </div>
-                    <div className="flex justify-center gap-4 py-1">
-                        <button onClick={toggleMic} disabled={isAiSpeaking} aria-label={isMicOn ? 'Mute microphone' : 'Unmute microphone'} className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isMicOn ? 'bg-slate-600 hover:bg-slate-500' : 'bg-red-600 hover:bg-red-500'} ${isAiSpeaking ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                            {isMicOn ? <MicOn className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-                        </button>
-                        <button onClick={toggleCamera} aria-label={isCameraOn ? 'Turn off camera' : 'Turn on camera'} className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isCameraOn ? 'bg-slate-600 hover:bg-slate-500' : 'bg-red-600 hover:bg-red-500'}`}>
-                            {isCameraOn ? <CameraOn className="h-5 w-5" /> : <CameraOff className="h-5 w-5" />}
-                        </button>
-                    </div>
-                    <div className="flex-grow"></div>
-                     <button onClick={handleLeaveCall} className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
-                        <span>Leave call</span>
-                    </button>
-                </aside>
-            </div>
-        ) : isCombinedMode ? (
-            <div key="combined-call-view" className="flex flex-1 animate-fade-in-up" style={{ animationDuration: '0.5s' }}>
-                <div className="flex-1 flex flex-col bg-black min-w-0 min-h-0">
-                    <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-4 p-4 overflow-hidden">
-                        <div className={`w-full h-full bg-black rounded-xl relative overflow-hidden border border-slate-700 shadow-lg flex-shrink-0 transition-all duration-300 min-h-0 ${isUserSpeaking ? 'ring-2 ring-primary ring-offset-2 ring-offset-black' : ''}`}>
-                            {!isCameraOn && (
-                                <div className="absolute inset-0 bg-slate-900 flex items-end justify-start p-3">
-                                    <p className="font-semibold text-white text-sm">{setupData?.candidateName || 'User'}</p>
-                                </div>
-                            )}
-                            <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transition-opacity ${isCameraOn ? 'opacity-100' : 'opacity-0'}`} />
-                            {isCameraOn && (
-                                <div className="absolute bottom-2 left-2 text-xs bg-black/40 px-2 py-0.5 rounded">
-                                    <span className="font-semibold text-white">{setupData?.candidateName || 'User'}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {interviewersDetails.map((details, index) => (
-                            <VideoPlaceholder key={index} name={details.name} role={details.role} isSpeaking={isAiSpeaking && activeInterviewerName === details.name} />
-                        ))}
-                    </div>
-
-                    <div className="flex-shrink-0 p-3 bg-dark/50 border-t border-slate-800 flex justify-center items-center gap-3">
-                        <button onClick={() => handleAskQuestion('technical')} disabled={isAiSpeaking} className="px-4 py-2 text-sm font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask Technical</button>
-                        <button onClick={() => handleAskQuestion('behavioral')} disabled={isAiSpeaking} className="px-4 py-2 text-sm font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask Behavioral</button>
-                        <button onClick={() => handleAskQuestion('hr')} disabled={isAiSpeaking} className="px-4 py-2 text-sm font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask HR</button>
-
-                        <div className="w-px h-8 bg-slate-700 mx-2"></div>
-
-                        <ControlButton onClick={toggleMic} active={isMicOn} ariaLabel={isMicOn ? 'Mute microphone' : 'Unmute microphone'} disabled={isAiSpeaking}>
-                            {isMicOn ? <MicOn className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
-                        </ControlButton>
-                        <ControlButton onClick={toggleCamera} active={isCameraOn} ariaLabel={isCameraOn ? 'Turn off camera' : 'Turn on camera'}>
-                            {isCameraOn ? <CameraOn className="h-6 w-6" /> : <CameraOff className="h-6 w-6" />}
-                        </ControlButton>
-                    </div>
-                </div>
-
-                <aside className="w-[350px] bg-slate-800/50 flex flex-col border-l border-slate-700">
-                    <div className="p-4 border-b border-slate-700 flex-shrink-0">
-                        <h2 className="text-lg font-semibold">Live Transcript</h2>
-                    </div>
-                    <div className="flex-1 p-4 overflow-y-auto space-y-4">
-                        {transcriptStatusMessage && (
-                          <div className="flex justify-center items-center h-full">
-                            <p className="text-gray-400 text-center">{transcriptStatusMessage}</p>
-                          </div>
-                        )}
-                        {transcript.map((item, index) => (
-                        <div key={index} className={`flex flex-col ${item.speaker === 'You' ? 'items-end' : 'items-start'}`}>
-                            <div className={`rounded-lg px-3 py-2 max-w-[90%] ${item.speaker === 'You' ? 'bg-primary text-white' : 'bg-slate-700'}`}>
-                            <p className="text-xs font-bold mb-1">{item.speaker}</p>
-                            <p className="text-sm">{item.text}</p>
-                            </div>
-                        </div>
-                        ))}
-                        <div ref={transcriptEndRef} />
-                    </div>
-                    <div className="p-4 border-t border-slate-700 flex-shrink-0">
-                        <button onClick={handleLeaveCall} className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
-                        <PhoneHangUpIcon />
-                        <span>Leave call</span>
-                        </button>
-                    </div>
-                </aside>
-            </div>
-        ) : (
-            <div key="call-view" className="flex flex-1 animate-fade-in-up" style={{ animationDuration: '0.5s' }}>
-                <div className="flex-1 flex flex-col p-4 gap-4">
-                <div className={`flex-shrink-0 flex flex-wrap ${interviewersDetails.length === 1 ? 'justify-center' : 'justify-center md:justify-around'} gap-4`}>
-                    {interviewersDetails.map((details, index) => (
-                    <div key={index} className={
-                        interviewersDetails.length === 1 ? 'w-full max-w-xl' :
-                        'w-full md:w-1/3 max-w-sm'
-                    }>
-                        <VideoPlaceholder name={details.name} role={details.role} isSpeaking={isAiSpeaking && activeInterviewerName === details.name} />
-                    </div>
-                    ))}
-                </div>
-                <div className="flex-1 flex items-center justify-center min-h-0 p-4">
-                    <div className={`w-full max-w-2xl aspect-video bg-black rounded-2xl relative overflow-hidden border border-slate-800 shadow-2xl transition-all duration-300 ${isUserSpeaking ? 'ring-4 ring-primary ring-offset-4 ring-offset-dark' : ''}`}>
-                    {!isCameraOn && <div className="absolute inset-0 bg-slate-900 flex items-end justify-start p-3"><p className="font-semibold text-white text-sm">{setupData?.candidateName || 'User'}</p></div>}
-                    <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transition-opacity ${isCameraOn ? 'opacity-100' : 'opacity-0'}`} />
-                    
-                     {isCameraOn && <div className="absolute bottom-3 left-3 text-sm bg-black/30 px-2 py-1 rounded-md">
-                        <span className="font-semibold text-amber-500">{setupData?.candidateName || 'UserName'}</span>
-                    </div>}
-
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/50 to-transparent flex justify-center items-center">
-                        <div className="flex items-center gap-6">
-                        <ControlButton onClick={toggleMic} active={isMicOn} ariaLabel={isMicOn ? 'Mute microphone' : 'Unmute microphone'} disabled={isAiSpeaking}>
-                            {isMicOn ? <MicOn className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
-                        </ControlButton>
-                        <ControlButton onClick={toggleCamera} active={isCameraOn} ariaLabel={isCameraOn ? 'Turn off camera' : 'Turn on camera'}>
-                            {isCameraOn ? <CameraOn className="h-6 w-6" /> : <CameraOff className="h-6 w-6" />}
-                        </ControlButton>
-                        </div>
-                    </div>
-                    </div>
-                </div>
-                </div>
-
-                <aside className="w-[350px] bg-slate-800/50 flex flex-col border-l border-slate-700">
-                <div className="p-4 border-b border-slate-700 flex-shrink-0">
-                    <h2 className="text-lg font-semibold">Live Transcript</h2>
-                </div>
-                <div className="flex-1 p-4 overflow-y-auto space-y-4">
-                    {transcriptStatusMessage && (
-                      <div className="flex justify-center items-center h-full">
-                        <p className="text-gray-400 text-center">{transcriptStatusMessage}</p>
+              {/* Editor Panel */}
+              <section className="flex-1 flex flex-col bg-slate-900/20">
+                   <div className="flex-shrink-0 flex justify-end items-center gap-2 p-2 border-b border-slate-700">
+                       <span className="text-xs text-gray-400">Zoom:</span>
+                       <button onClick={() => setFontSize(s => Math.max(10, s - 1))} className="w-6 h-6 rounded bg-slate-700 hover:bg-slate-600">-</button>
+                       <button onClick={() => setFontSize(s => Math.min(24, s + 1))} className="w-6 h-6 rounded bg-slate-700 hover:bg-slate-600">+</button>
+                   </div>
+                  <textarea 
+                      value={codes[activeCategory] || ''} 
+                      onChange={handleCodeChange} 
+                      style={{ fontSize: `${fontSize}px` }}
+                      className="flex-1 w-full bg-transparent p-4 font-mono focus:outline-none resize-none"
+                      placeholder={getPlaceholderForCategory()}
+                  />
+                   <div className="flex-shrink-0 flex items-center gap-4 p-3 border-t border-slate-700">
+                      {activeCategory === 'DSA' && (
+                           <button
+                               onClick={() => setShowLeetcodeModal(true)}
+                               /* ======================================================================
+                               IMPROVEMENT 3: Cleaner Coder Buttons
+                               ======================================================================
+                               */
+                               className="px-4 py-2 text-sm font-semibold bg-slate-700 text-white rounded-md hover:bg-slate-600 transition-colors flex items-center gap-2"
+                           >
+                               Solve on Leetcode
+                               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                               </svg>
+                           </button>
+                      )}
+                      <div className="flex-grow flex items-center gap-2">
+                          {validationResult && (
+                              <div className={`flex items-center gap-2 p-2 rounded-md text-sm animate-fade-in-up ${
+                                  validationResult.isCorrect === true ? 'bg-green-900/50 text-green-300' : 
+                                  validationResult.isCorrect === false ? 'bg-red-900/50 text-red-300' :
+                                  'bg-yellow-900/50 text-yellow-300'
+                              }`}>
+                                  {validationResult.isCorrect === true && <CheckIcon />}
+                                  {validationResult.isCorrect === false && <CrossIcon />}
+                                  <span>{validationResult.feedback}</span>
+                                  {validationResult.isCorrect === false && validationResult.hint && (
+                                      <div className="relative group">
+                                          <HintIcon />
+                                          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-72 hidden group-hover:block bg-slate-900 text-white text-sm rounded py-2 px-3 shadow-lg border border-slate-700 z-10">
+                                              <strong>Hint:</strong> {validationResult.hint}
+                                          </div>
+                                      </div>
+                                  )}
+                              </div>
+                          )}
                       </div>
-                    )}
-                    {transcript.map((item, index) => (
-                    <div key={index} className={`flex flex-col ${item.speaker === 'You' ? 'items-end' : 'items-start'}`}>
-                        <div className={`rounded-lg px-3 py-2 max-w-[90%] ${item.speaker === 'You' ? 'bg-primary text-white' : 'bg-slate-700'}`}>
-                        <p className="text-xs font-bold mb-1">{item.speaker}</p>
-                        <p className="text-sm">{item.text}</p>
-                        </div>
+                      <button 
+                        onClick={() => { setCodes(prev => ({ ...prev, [activeCategory]: '' })); setValidationResult(null); }} 
+                        /* ======================================================================
+                        IMPROVEMENT 3: Cleaner Coder Buttons
+                        ======================================================================
+                        */
+                        className="px-4 py-2 text-sm font-semibold bg-transparent border border-slate-600 text-gray-300 rounded-md hover:bg-slate-800 transition-colors"
+                      >
+                        Clear
+                      </button>
+                      <button 
+                        onClick={handleValidateAnswer} 
+                        disabled={isValidating} 
+                        className="px-4 py-2 text-sm font-semibold bg-primary text-white rounded-md hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center justify-center w-32"
+                      >
+                          {isValidating ? (
+                              <SpinnerIcon />
+                          ) : (
+                              'Validate answer'
+                          )}
+                      </button>
+                  </div>
+              </section>
+
+              {/* Video & Controls Sidebar */}
+              <aside className="w-[280px] bg-slate-800/50 flex flex-col border-l border-slate-700 p-4 gap-4 overflow-y-auto">
+                  {interviewersDetails.map((details, index) => (
+                      <div key={index} className="flex-shrink-0">
+                         <VideoPlaceholder name={details.name} role={details.role} isSpeaking={isAiSpeaking && activeInterviewerName === details.name} />
+                      </div>
+                  ))}
+                  <div className={`w-full aspect-video bg-black rounded-xl relative overflow-hidden border border-slate-700 shadow-lg flex-shrink-0 transition-all duration-300 ${isUserSpeaking ? 'ring-2 ring-primary ring-offset-2 ring-offset-slate-800' : ''}`}>
+                        {!isCameraOn && <div className="absolute inset-0 bg-slate-900 flex items-end justify-start p-3"><p className="font-semibold text-white text-sm">{setupData?.candidateName || 'User'}</p></div>}
+                      <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transition-opacity ${isCameraOn ? 'opacity-100' : 'opacity-0'}`} />
+                        {isCameraOn && <div className="absolute bottom-2 left-2 text-xs bg-black/40 px-2 py-0.5 rounded">
+                          <span className="font-semibold text-white">{setupData?.candidateName || 'User'}</span>
+                      </div>}
+                  </div>
+                  
+                  {/* ======================================================================
+                  IMPROVEMENT 2: Consistent Control Bar
+                  ======================================================================
+                  */}
+                  <div className="flex-grow"></div>
+                  <div className="flex justify-center gap-4 py-1">
+                        <ToggleControlButton onClick={toggleMic} active={isMicOn} ariaLabel={isMicOn ? 'Mute microphone' : 'Unmute microphone'} disabled={isAiSpeaking}>
+                            {isMicOn ? <MicOn className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
+                        </ToggleControlButton>
+                        <ToggleControlButton onClick={toggleCamera} active={isCameraOn} ariaLabel={isCameraOn ? 'Turn off camera' : 'Turn on camera'}>
+                            {isCameraOn ? <CameraOn className="h-6 w-6" /> : <CameraOff className="h-6 w-6" />}
+                        </ToggleControlButton>
+                        <ControlButton onClick={handleLeaveCall} active={false} ariaLabel="Leave call">
+                            <PhoneHangUpIcon />
+                        </ControlButton>
+                  </div>
+              </aside>
+          </div>
+        ) : isCombinedMode ? (
+          <div key="combined-call-view" className="flex flex-1 animate-fade-in-up" style={{ animationDuration: '0.5s' }}>
+              <div className="flex-1 flex flex-col bg-black min-w-0 min-h-0">
+                  <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-4 p-4 overflow-hidden">
+                      <div className={`w-full h-full bg-black rounded-xl relative overflow-hidden border border-slate-700 shadow-lg flex-shrink-0 transition-all duration-300 min-h-0 ${isUserSpeaking ? 'ring-2 ring-primary ring-offset-2 ring-offset-black' : ''}`}>
+                          {!isCameraOn && (
+                              <div className="absolute inset-0 bg-slate-900 flex items-end justify-start p-3">
+                                  <p className="font-semibold text-white text-sm">{setupData?.candidateName || 'User'}</p>
+                              </div>
+                          )}
+                          <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transition-opacity ${isCameraOn ? 'opacity-100' : 'opacity-0'}`} />
+                          {isCameraOn && (
+                              <div className="absolute bottom-2 left-2 text-xs bg-black/40 px-2 py-0.5 rounded">
+                                  <span className="font-semibold text-white">{setupData?.candidateName || 'User'}</span>
+                              </div>
+                          )}
+                      </div>
+
+                      {/* FIX: Wrapped VideoPlaceholder in a div and moved the key to the wrapper to resolve props error. */}
+                      {interviewersDetails.map((details, index) => (
+                          <div key={index}>
+                            <VideoPlaceholder name={details.name} role={details.role} isSpeaking={isAiSpeaking && activeInterviewerName === details.name} />
+                          </div>
+                      ))}
+                  </div>
+
+                  {/* ======================================================================
+                  IMPROVEMENT 2: Consistent Control Bar
+                  ======================================================================
+                  */}
+                  <div className="flex-shrink-0 p-3 bg-dark/50 border-t border-slate-800 flex justify-center items-center gap-3">
+                      <button onClick={() => handleAskQuestion('technical')} disabled={isAiSpeaking} className="px-4 py-2 text-sm font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask Technical</button>
+                      <button onClick={() => handleAskQuestion('behavioral')} disabled={isAiSpeaking} className="px-4 py-2 text-sm font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask Behavioral</button>
+                      <button onClick={() => handleAskQuestion('hr')} disabled={isAiSpeaking} className="px-4 py-2 text-sm font-semibold bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Ask HR</button>
+
+                      <div className="w-px h-8 bg-slate-700 mx-2"></div>
+
+                      <ToggleControlButton onClick={toggleMic} active={isMicOn} ariaLabel={isMicOn ? 'Mute microphone' : 'Unmute microphone'} disabled={isAiSpeaking}>
+                          {isMicOn ? <MicOn className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
+                      </ToggleControlButton>
+                      <ToggleControlButton onClick={toggleCamera} active={isCameraOn} ariaLabel={isCameraOn ? 'Turn off camera' : 'Turn on camera'}>
+                          {isCameraOn ? <CameraOn className="h-6 w-6" /> : <CameraOff className="h-6 w-6" />}
+                      </ToggleControlButton>
+                  </div>
+              </div>
+
+              <aside className="w-[350px] bg-slate-800/50 flex flex-col border-l border-slate-700">
+                  <div className="p-4 border-b border-slate-700 flex-shrink-0">
+                      <h2 className="text-lg font-semibold">Live Transcript</h2>
+                  </div>
+                  <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                      {transcriptStatusMessage && (
+                      <div className="flex justify-center items-center h-full">
+                          <p className="text-gray-400 text-center">{transcriptStatusMessage}</p>
+                      </div>
+                      )}
+                      {transcript.map((item, index) => (
+                      <div key={index} className={`flex flex-col ${item.speaker === 'You' ? 'items-end' : 'items-start'}`}>
+                          <div className={`rounded-lg px-3 py-2 max-w-[90%] ${item.speaker === 'You' ? 'bg-primary text-white' : 'bg-slate-700'}`}>
+                          <p className="text-xs font-bold mb-1">{item.speaker}</p>
+                          <p className="text-sm">{item.text}</p>
+                          </div>
+                      </div>
+                      ))}
+                      <div ref={transcriptEndRef} />
+                  </div>
+                  <div className="p-4 border-t border-slate-700 flex-shrink-0">
+                    <button
+                        onClick={handleLeaveCall}
+                        className="w-full flex items-center justify-center gap-2 bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-500 transition-transform transform hover:scale-105 duration-300"
+                    >
+                        <PhoneHangUpIcon />
+                        <span>Leave Call</span>
+                    </button>
+                  </div>
+              </aside>
+          </div>
+        ) : (
+          <div key="call-view" className="flex flex-1 animate-fade-in-up" style={{ animationDuration: '0.5s' }}>
+              <div className="flex-1 flex flex-col p-4 gap-4">
+              <div className={`flex-shrink-0 flex flex-wrap ${interviewersDetails.length === 1 ? 'justify-center' : 'justify-center md:justify-around'} gap-4`}>
+                  {interviewersDetails.map((details, index) => (
+                  <div
+                    key={index}
+                    className={`w-full aspect-video ${
+                      interviewersDetails.length === 1 ? 'max-w-xl' : 'md:w-1/3 max-w-sm'
+                    }`}
+                  >
+                    <VideoPlaceholder name={details.name} role={details.role} isSpeaking={isAiSpeaking && activeInterviewerName === details.name} />
+                  </div>
+                  ))}
+              </div>
+              <div className="flex-1 flex items-center justify-center min-h-0 p-4">
+                  <div className={`w-full max-w-2xl aspect-video bg-black rounded-2xl relative overflow-hidden border border-slate-800 shadow-2xl transition-all duration-300 ${isUserSpeaking ? 'ring-4 ring-primary ring-offset-4 ring-offset-dark' : ''}`}>
+                  {!isCameraOn && <div className="absolute inset-0 bg-slate-900 flex items-end justify-start p-3"><p className="font-semibold text-white text-sm">{setupData?.candidateName || 'User'}</p></div>}
+                  <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transition-opacity ${isCameraOn ? 'opacity-100' : 'opacity-0'}`} />
+                  
+                    {isCameraOn && <div className="absolute bottom-3 left-3 text-sm bg-black/30 px-2 py-1 rounded-md">
+                      <span className="font-semibold text-amber-500">{setupData?.candidateName || 'UserName'}</span>
+                  </div>}
+
+                  {/* ======================================================================
+                  IMPROVEMENT 2: Removed overlay controls from here
+                  ======================================================================
+                  */}
+                  </div>
+              </div>
+              {/* ======================================================================
+              IMPROVEMENT 2: Added static control bar at the bottom
+              ======================================================================
+              */}
+              <div className="flex-shrink-0 p-3 bg-dark/50 flex justify-center items-center gap-4">
+                <ToggleControlButton onClick={toggleMic} active={isMicOn} ariaLabel={isMicOn ? 'Mute microphone' : 'Unmute microphone'} disabled={isAiSpeaking}>
+                    {isMicOn ? <MicOn className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
+                </ToggleControlButton>
+                <ToggleControlButton onClick={toggleCamera} active={isCameraOn} ariaLabel={isCameraOn ? 'Turn off camera' : 'Turn on camera'}>
+                    {isCameraOn ? <CameraOn className="h-6 w-6" /> : <CameraOff className="h-6 w-6" />}
+                </ToggleControlButton>
+              </div>
+              </div>
+
+              <aside className="w-[350px] bg-slate-800/50 flex flex-col border-l border-slate-700">
+              <div className="p-4 border-b border-slate-700 flex-shrink-0">
+                  <h2 className="text-lg font-semibold">Live Transcript</h2>
+              </div>
+              <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                  {transcriptStatusMessage && (
+                    <div className="flex justify-center items-center h-full">
+                      <p className="text-gray-400 text-center">{transcriptStatusMessage}</p>
                     </div>
-                    ))}
-                    <div ref={transcriptEndRef} />
-                </div>
-                <div className="p-4 border-t border-slate-700 flex-shrink-0">
-                    <button onClick={handleLeaveCall} className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
-                    <PhoneHangUpIcon />
-                    <span>Leave call</span>
+                  )}
+                  {transcript.map((item, index) => (
+                  <div key={index} className={`flex flex-col ${item.speaker === 'You' ? 'items-end' : 'items-start'}`}>
+                      <div className={`rounded-lg px-3 py-2 max-w-[90%] ${item.speaker === 'You' ? 'bg-primary text-white' : 'bg-slate-700'}`}>
+                      <p className="text-xs font-bold mb-1">{item.speaker}</p>
+                      <p className="text-sm">{item.text}</p>
+                      </div>
+                  </div>
+                  ))}
+                  <div ref={transcriptEndRef} />
+              </div>
+              <div className="p-4 border-t border-slate-700 flex-shrink-0">
+                    <button
+                        onClick={handleLeaveCall}
+                        className="w-full flex items-center justify-center gap-2 bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-500 transition-transform transform hover:scale-105 duration-300"
+                    >
+                        <PhoneHangUpIcon />
+                        <span>Leave Call</span>
                     </button>
                 </div>
-                </aside>
-            </div>
+              </aside>
+          </div>
         )}
       </main>
       
