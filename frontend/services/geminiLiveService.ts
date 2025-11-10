@@ -160,8 +160,8 @@ export const initiateLiveSession = async ({
       speechConfig: {
         voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
       },
-      inputAudioTranscription: { languageCodes: ['en-US'] },
-      outputAudioTranscription: { languageCodes: ['en-US'] },
+      inputAudioTranscription: {},
+      outputAudioTranscription: {},
       systemInstruction,
     },
   });

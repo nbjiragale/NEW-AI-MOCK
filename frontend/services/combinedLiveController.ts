@@ -287,8 +287,8 @@ CRITICAL RULES:
             config: {
                 responseModalities: [Modality.AUDIO],
                 speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: config.voiceName } } },
-                inputAudioTranscription: { languageCodes: ['en-US'] },
-                outputAudioTranscription: { languageCodes: ['en-US'] },
+                inputAudioTranscription: {},
+                outputAudioTranscription: {},
                 systemInstruction: config.systemInstruction,
             }
         });
