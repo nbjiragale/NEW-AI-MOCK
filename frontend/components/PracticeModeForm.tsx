@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 type PracticeOption = 'topic' | 'list' | 'confidence';
 
-const FormInput: React.FC<{ label: string; type: string; placeholder: string; name: string, value: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, type, placeholder, name, value, onChange }) => (
+const FormInput: React.FC<{ label: string; type: string; placeholder: string; name: string, value: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, required?: boolean }> = ({ label, type, placeholder, name, value, onChange, required = false }) => (
     <div>
         <label htmlFor={name} className="block mb-2 text-base font-medium text-gray-300">{label}</label>
         <input
@@ -13,11 +13,12 @@ const FormInput: React.FC<{ label: string; type: string; placeholder: string; na
             onChange={onChange}
             className="bg-slate-800 border border-slate-700 text-white text-base rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 transition"
             placeholder={placeholder}
+            required={required}
         />
     </div>
 );
 
-const FormTextarea: React.FC<{ label: string; placeholder: string; name: string, rows?: number, value: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void }> = ({ label, placeholder, name, rows = 4, value, onChange }) => (
+const FormTextarea: React.FC<{ label: string; placeholder: string; name: string, rows?: number, value: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, required?: boolean }> = ({ label, placeholder, name, rows = 4, value, onChange, required = false }) => (
     <div>
         <label htmlFor={name} className="block mb-2 text-base font-medium text-gray-300">{label}</label>
         <textarea
@@ -28,6 +29,7 @@ const FormTextarea: React.FC<{ label: string; placeholder: string; name: string,
             onChange={onChange}
             className="bg-slate-800 border border-slate-700 text-white text-base rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 transition"
             placeholder={placeholder}
+            required={required}
         ></textarea>
     </div>
 );
@@ -81,6 +83,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
     };
 
     const [practiceOption, setPracticeOption] = useState<PracticeOption>(getInitialOption());
+    const [candidateName, setCandidateName] = useState(initialData?.candidateName || '');
     const [interviewType, setInterviewType] = useState(initialData?.interviewType || 'Technical');
     const [topicName, setTopicName] = useState(initialData?.practiceType === 'By Topic Name' ? initialData.topicName : '');
     const [questionList, setQuestionList] = useState(initialData?.practiceType === 'By List of Questions' ? initialData.questionList : '');
@@ -91,6 +94,9 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
     };
 
     const isButtonDisabled = () => {
+        if (!candidateName.trim()) {
+            return true;
+        }
         switch (practiceOption) {
             case 'topic':
                 return !topicName.trim();
@@ -108,6 +114,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
         e.preventDefault();
         
         const baseData = {
+            candidateName,
             type: 'Practice Mode',
             interviewType,
             practiceType: practiceOption === 'topic' ? 'By Topic Name' : practiceOption === 'list' ? 'By List of Questions' : 'Build Confidence',
@@ -155,6 +162,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                         placeholder="e.g., React Hooks, JavaScript Promises, System Design..."
                         value={topicName}
                         onChange={(e) => setTopicName(e.target.value)}
+                        required
                     />
                 );
             case 'list':
@@ -166,6 +174,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                         placeholder="Paste your questions here, one per line."
                         value={questionList}
                         onChange={(e) => setQuestionList(e.target.value)}
+                        required
                     />
                 );
             case 'confidence':
@@ -180,6 +189,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                                 placeholder="Your thoughts here..."
                                 value={confidenceAnswers[index]}
                                 onChange={(e) => handleConfidenceChange(index, e.target.value)}
+                                required
                             />
                         ))}
                     </div>
@@ -192,6 +202,15 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
     return (
         <div className="p-6 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
+                <FormInput
+                    label="Candidate Name"
+                    name="candidateName"
+                    type="text"
+                    placeholder="e.g., Jane Doe"
+                    value={candidateName}
+                    onChange={(e) => setCandidateName(e.target.value)}
+                    required
+                />
                 <FormSelect 
                     label="Interview Type" 
                     name="interviewType" 
