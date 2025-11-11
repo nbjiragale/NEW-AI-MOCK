@@ -1,23 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { generateInterviewReport } from '../services/geminiForReportGeneration';
+import { downloadReportAsPdf } from '../services/pdfGenerator';
 
 // TypeScript declarations for CDN libraries
-declare var html2canvas: any;
 declare var jspdf: any;
-
-const ThumbsUpIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 18.236V6.764a2 2 0 012-2h4a2 2 0 012 2v4z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21V9.236" />
-    </svg>
-);
-
-const ThumbsDownIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.738 3h4.017c.163 0 .326.02.485.06L17 5.764V17.236a2 2 0 01-2 2h-4a2 2 0 01-2-2v-4z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 3v11.764" />
-    </svg>
-);
 
 const LightbulbIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -37,7 +23,6 @@ const RestartIcon = () => (
     </svg>
 );
 
-
 const ReportSection: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode; }> = ({ icon, title, children }) => (
     <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
         <div className="flex items-center gap-4 mb-4">
@@ -50,12 +35,35 @@ const ReportSection: React.FC<{ icon: React.ReactNode; title: string; children: 
     </div>
 );
 
+const ScoreBar: React.FC<{ score: number }> = ({ score }) => {
+    const getColor = (s: number) => {
+        if (s >= 80) return 'bg-green-500';
+        if (s >= 60) return 'bg-yellow-500';
+        return 'bg-red-500';
+    };
+
+    return (
+        <div className="w-full bg-slate-700 rounded-full h-2.5">
+            <div
+                className={`transition-all duration-1000 ease-out ${getColor(score)} h-2.5 rounded-full`}
+                style={{ width: `${score}%` }}
+            ></div>
+        </div>
+    );
+};
+
+
 interface ReportData {
-    strengths: string[];
-    weaknesses: string[];
-    improvements: string[];
+    overallScore: number;
     overallFeedback: string;
+    performanceBreakdown: {
+        category: string;
+        score: number;
+        feedback: string;
+    }[];
+    actionableSuggestions: string[];
 }
+
 
 interface TranscriptItem {
     speaker: string;
@@ -73,19 +81,18 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
     const [report, setReport] = useState<ReportData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const reportRef = useRef<HTMLDivElement>(null);
     
     useEffect(() => {
         const fetchReport = async () => {
-            if (interviewDuration !== null && interviewDuration < 600) { // 10 minutes = 600 seconds
-                setError("The interview was too short (less than 10 minutes) to generate a meaningful performance report. Please try again with a longer session.");
+            if (interviewDuration !== null && interviewDuration < 60) {
+                setError("The interview was too short (less than 1 minute) to generate a meaningful performance report. Please try again with a longer session.");
                 setIsLoading(false);
                 setReport(null);
                 return;
             }
 
-            if (!transcript) {
-                setError("No interview data available to generate a report.");
+            if (!transcript || transcript.length < 2) {
+                setError("Not enough conversation data was recorded to generate a report.");
                 setIsLoading(false);
                 return;
             }
@@ -95,7 +102,7 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                 const generatedReport = await generateInterviewReport(setupData, transcript);
                 setReport(generatedReport);
             } catch (e) {
-                setError("Sorry, we couldn't generate your report at this time. Please try again later.");
+                setError("Sorry, we couldn't generate your report at this time. Our AI may be experiencing high demand. Please try again later.");
                 console.error(e);
             } finally {
                 setIsLoading(false);
@@ -106,33 +113,16 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
     }, [setupData, transcript, interviewDuration]);
     
     const handleDownload = () => {
-        if (!reportRef.current || !report) {
+        if (!report) {
             alert("Report content is not available for download.");
             return;
         }
-
-        const reportElement = reportRef.current;
-        const candidateName = setupData?.candidateName || "Interview";
-        const fileName = `${candidateName.replace(/\s/g, '_')}_Report.pdf`;
-
-        html2canvas(reportElement, {
-            backgroundColor: '#0A0A0A', // dark bg
-            scale: 2, // higher resolution
-            useCORS: true, 
-        }).then((canvas: any) => {
-            const imgData = canvas.toDataURL('image/png');
-            const { jsPDF } = jspdf;
-            const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'px',
-                format: [canvas.width, canvas.height]
-            });
-            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-            pdf.save(fileName);
-        }).catch((err: any) => {
-             console.error("Error generating PDF:", err);
-             alert("Could not generate PDF. Please try again.");
-        });
+        try {
+             downloadReportAsPdf(report, setupData);
+        } catch (err) {
+            console.error("Error generating PDF:", err);
+            alert("Could not generate PDF. Please try again.");
+        }
     };
     
     const renderContent = () => {
@@ -167,31 +157,29 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
         }
 
         return (
-            <div ref={reportRef} className="p-4 md:p-8 bg-dark">
-                 <div className="space-y-8">
-                    <div className="text-center">
-                        <h2 className="text-3xl font-bold text-white">Performance Summary</h2>
-                        <p className="text-gray-400 mt-2 max-w-2xl mx-auto">{report.overallFeedback}</p>
-                    </div>
-
-                    <ReportSection icon={<ThumbsUpIcon />} title="Strengths">
-                        <ul className="list-disc list-inside space-y-2">
-                           {report.strengths.map((item, index) => <li key={index}>{item}</li>)}
-                        </ul>
-                    </ReportSection>
-
-                    <ReportSection icon={<ThumbsDownIcon />} title="Areas for Improvement">
-                         <ul className="list-disc list-inside space-y-2">
-                             {report.weaknesses.map((item, index) => <li key={index}>{item}</li>)}
-                        </ul>
-                    </ReportSection>
-
-                    <ReportSection icon={<LightbulbIcon />} title="Actionable Suggestions">
-                        <ul className="list-disc list-inside space-y-2">
-                           {report.improvements.map((item, index) => <li key={index}>{item}</li>)}
-                        </ul>
-                    </ReportSection>
+            <div className="space-y-8">
+                <div className="text-center p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+                    <h3 className="text-lg font-semibold text-gray-400">Overall Score</h3>
+                    <p className="text-6xl font-bold text-primary my-2">{report.overallScore}<span className="text-3xl text-gray-400">/100</span></p>
+                    <p className="text-gray-300 max-w-2xl mx-auto">{report.overallFeedback}</p>
                 </div>
+
+                {report.performanceBreakdown.map((item, index) => (
+                    <div key={index} className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-xl font-bold text-white">{item.category}</h4>
+                            <span className="text-xl font-semibold text-white">{item.score}/100</span>
+                        </div>
+                        <ScoreBar score={item.score} />
+                        <p className="text-gray-300 mt-4">{item.feedback}</p>
+                    </div>
+                ))}
+                
+                <ReportSection icon={<LightbulbIcon />} title="Actionable Suggestions">
+                    <ul className="list-disc list-inside space-y-2">
+                        {report.actionableSuggestions.map((item, index) => <li key={index}>{item}</li>)}
+                    </ul>
+                </ReportSection>
             </div>
         );
     }
@@ -202,10 +190,12 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                 <div className="max-w-4xl mx-auto">
                     <div className="text-center mb-12">
                         <h1 className="text-4xl md:text-5xl font-extrabold text-white">Interview Report</h1>
-                        <p className="mt-4 text-lg text-gray-400">Here's a summary of your performance.</p>
+                        <p className="mt-4 text-lg text-gray-400">Here's a detailed summary of your performance.</p>
                     </div>
                     
-                    {renderContent()}
+                    <div className="bg-slate-900/50 border border-slate-700 rounded-xl shadow-2xl p-6 md:p-8">
+                        {renderContent()}
+                    </div>
 
                     {!isLoading && (
                         <div className="mt-12 flex flex-col sm:flex-row justify-center gap-4">
