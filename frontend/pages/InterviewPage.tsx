@@ -390,6 +390,11 @@ ${questionList}
     };
   }, [isCombinedMode]); // Rerun effect if mode changes, though it shouldn't in practice.
 
+  // This useEffect causes the user's mic to be muted as soon as the AI starts responding,
+  // even if the user is still finishing their sentence. This cuts off the audio stream
+  // and stops transcription prematurely for longer answers. Removing it allows for
+  // natural barge-in, which the Gemini Live API is designed to handle.
+  /*
   useEffect(() => {
     // Automatically mute/unmute microphone based on AI speaking state
     if (streamRef.current) {
@@ -411,6 +416,7 @@ ${questionList}
       }
     }
   }, [isAiSpeaking]);
+  */
 
   useEffect(() => {
     if (streamLoaded && videoRef.current && streamRef.current) {
@@ -455,10 +461,6 @@ ${questionList}
   };
 
   const toggleMic = () => {
-    // Disable manual mic control while AI is speaking
-    if (isAiSpeaking) {
-      return;
-    }
     if (streamRef.current) {
       const audioTrack = streamRef.current.getAudioTracks()[0];
       if (audioTrack) {
@@ -725,7 +727,7 @@ ${questionList}
                   */}
                   <div className="flex-grow"></div>
                   <div className="flex justify-center gap-4 py-1">
-                        <ToggleControlButton onClick={toggleMic} active={isMicOn} ariaLabel={isMicOn ? 'Mute microphone' : 'Unmute microphone'} disabled={isAiSpeaking}>
+                        <ToggleControlButton onClick={toggleMic} active={isMicOn} ariaLabel={isMicOn ? 'Mute microphone' : 'Unmute microphone'}>
                             {isMicOn ? <MicOn className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
                         </ToggleControlButton>
                         <ToggleControlButton onClick={toggleCamera} active={isCameraOn} ariaLabel={isCameraOn ? 'Turn off camera' : 'Turn on camera'}>
@@ -774,7 +776,7 @@ ${questionList}
 
                       <div className="w-px h-8 bg-slate-700 mx-2"></div>
 
-                      <ToggleControlButton onClick={toggleMic} active={isMicOn} ariaLabel={isMicOn ? 'Mute microphone' : 'Unmute microphone'} disabled={isAiSpeaking}>
+                      <ToggleControlButton onClick={toggleMic} active={isMicOn} ariaLabel={isMicOn ? 'Mute microphone' : 'Unmute microphone'}>
                           {isMicOn ? <MicOn className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
                       </ToggleControlButton>
                       <ToggleControlButton onClick={toggleCamera} active={isCameraOn} ariaLabel={isCameraOn ? 'Turn off camera' : 'Turn on camera'}>
@@ -849,7 +851,7 @@ ${questionList}
               ======================================================================
               */}
               <div className="flex-shrink-0 p-3 bg-dark/50 flex justify-center items-center gap-4">
-                <ToggleControlButton onClick={toggleMic} active={isMicOn} ariaLabel={isMicOn ? 'Mute microphone' : 'Unmute microphone'} disabled={isAiSpeaking}>
+                <ToggleControlButton onClick={toggleMic} active={isMicOn} ariaLabel={isMicOn ? 'Mute microphone' : 'Unmute microphone'}>
                     {isMicOn ? <MicOn className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
                 </ToggleControlButton>
                 <ToggleControlButton onClick={toggleCamera} active={isCameraOn} ariaLabel={isCameraOn ? 'Turn off camera' : 'Turn on camera'}>
