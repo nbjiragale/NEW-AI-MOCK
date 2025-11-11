@@ -112,6 +112,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [sessionStatus, setSessionStatus] = useState<'IDLE' | 'CONNECTING' | 'CONNECTED' | 'ERROR'>('IDLE');
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   
   const isCombinedMode = setupData?.interviewType === 'Combined';
   const interviewersDetails = interviewerDetails || [{ name: 'Interviewer', role: 'AI' }];
@@ -695,7 +696,7 @@ ${questionList}
                         <ToggleControlButton onClick={toggleCamera} active={isCameraOn} ariaLabel={isCameraOn ? 'Turn off camera' : 'Turn on camera'}>
                             {isCameraOn ? <CameraOn className="h-6 w-6" /> : <CameraOff className="h-6 w-6" />}
                         </ToggleControlButton>
-                        <ControlButton onClick={handleLeaveCall} active={false} ariaLabel="Leave call">
+                        <ControlButton onClick={() => setShowLeaveConfirm(true)} active={false} ariaLabel="Leave call">
                             <PhoneHangUpIcon />
                         </ControlButton>
                   </div>
@@ -769,7 +770,7 @@ ${questionList}
                   </div>
                   <div className="p-4 border-t border-slate-700 flex-shrink-0">
                     <button
-                        onClick={handleLeaveCall}
+                        onClick={() => setShowLeaveConfirm(true)}
                         className="w-full flex items-center justify-center gap-2 bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-500 transition-transform transform hover:scale-105 duration-300"
                     >
                         <PhoneHangUpIcon />
@@ -844,7 +845,7 @@ ${questionList}
               </div>
               <div className="p-4 border-t border-slate-700 flex-shrink-0">
                     <button
-                        onClick={handleLeaveCall}
+                        onClick={() => setShowLeaveConfirm(true)}
                         className="w-full flex items-center justify-center gap-2 bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-500 transition-transform transform hover:scale-105 duration-300"
                     >
                         <PhoneHangUpIcon />
@@ -895,6 +896,34 @@ ${questionList}
           </div>
         </div>
       )}
+
+        {showLeaveConfirm && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-up" style={{ animationDuration: '0.3s' }}>
+            <div className="bg-slate-800 rounded-lg shadow-xl p-8 max-w-md w-full border border-slate-700 text-center">
+                <h3 className="text-xl font-semibold text-white mb-4">Leave Interview?</h3>
+                <p className="text-gray-300 mb-8">
+                Are you sure you want to end the interview session? Your progress will be saved and you will be taken to the summary page.
+                </p>
+                <div className="flex justify-center gap-4">
+                <button
+                    onClick={() => setShowLeaveConfirm(false)}
+                    className="px-6 py-2 font-semibold bg-slate-700 text-white rounded-md hover:bg-slate-600 transition-colors"
+                >
+                    Cancel
+                </button>
+                <button
+                    onClick={() => {
+                    setShowLeaveConfirm(false);
+                    handleLeaveCall();
+                    }}
+                    className="px-6 py-2 font-semibold bg-red-600 text-white rounded-md hover:bg-red-500 transition-colors"
+                >
+                    Leave
+                </button>
+                </div>
+            </div>
+            </div>
+        )}
     </div>
   );
 };
