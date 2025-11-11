@@ -12,9 +12,10 @@ type Tab = 'manual' | 'resume' | 'practice';
 interface SetupPageProps {
   initialData?: any;
   onStart: (data: any) => void;
+  profileData?: any;
 }
 
-const SetupPage: React.FC<SetupPageProps> = ({ initialData, onStart }) => {
+const SetupPage: React.FC<SetupPageProps> = ({ initialData, onStart, profileData }) => {
   const getInitialTab = (): Tab => {
     if (!initialData) return 'manual';
     switch (initialData.type) {
@@ -29,7 +30,7 @@ const SetupPage: React.FC<SetupPageProps> = ({ initialData, onStart }) => {
 
   const renderTabContent = () => {
     const content = {
-      manual: <ManualEntryForm initialData={initialData?.type === 'Manual Entry' ? initialData : undefined} onSubmit={onStart} />,
+      manual: <ManualEntryForm initialData={initialData?.type === 'Manual Entry' ? initialData : undefined} onSubmit={onStart} profileData={profileData} />,
       resume: <ResumeUploadForm initialData={initialData?.type === 'By Resume' ? initialData : undefined} onSubmit={onStart} />,
       practice: <PracticeModeForm initialData={initialData?.type === 'Practice Mode' ? initialData : undefined} onSubmit={onStart} />,
     };

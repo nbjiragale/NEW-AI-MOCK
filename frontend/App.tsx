@@ -12,6 +12,7 @@ import VerificationPage from './pages/VerificationPage';
 import BeforeInterviewPage from './pages/BeforeInterviewPage';
 import InterviewPage from './pages/InterviewPage';
 import InterviewSummaryPage from './pages/InterviewSummaryPage';
+import ProfilePage from './pages/ProfilePage';
 
 const App: React.FC = () => {
   const [page, setPage] = useState('landing');
@@ -21,10 +22,19 @@ const App: React.FC = () => {
   const [interviewTranscript, setInterviewTranscript] = useState<any[] | null>(null);
   const [interviewDuration, setInterviewDuration] = useState<number | null>(null);
   const [interviewVideoFrames, setInterviewVideoFrames] = useState<string[] | null>(null);
+  const [profileData, setProfileData] = useState<any>(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [page]);
+
+  useEffect(() => {
+    // Load profile data on initial mount
+    const savedProfile = localStorage.getItem('userProfile');
+    if (savedProfile) {
+      setProfileData(JSON.parse(savedProfile));
+    }
+  }, []);
 
   const goToSetup = () => {
     setSetupData(null); 
@@ -71,11 +81,30 @@ const App: React.FC = () => {
     setInterviewVideoFrames(null);
   };
 
+  const goToProfile = () => {
+    setPage('profile');
+  };
+
+  const saveProfile = (data: any) => {
+    setProfileData(data);
+    localStorage.setItem('userProfile', JSON.stringify(data));
+    alert('Profile saved successfully!');
+    setPage('landing');
+  };
+  
+  const backToLanding = () => {
+    setPage('landing');
+  };
+
   if (page === 'setup') {
     return (
       <div className="bg-dark min-h-screen overflow-x-hidden">
         <main>
-          <SetupPage initialData={setupData} onStart={goToVerification} />
+          <SetupPage 
+            initialData={setupData} 
+            onStart={goToVerification} 
+            profileData={profileData}
+          />
         </main>
       </div>
     );
@@ -132,9 +161,23 @@ const App: React.FC = () => {
     )
   }
 
+  if (page === 'profile') {
+    return (
+      <div className="bg-dark min-h-screen overflow-x-hidden">
+        <main>
+          <ProfilePage 
+            initialData={profileData}
+            onSave={saveProfile}
+            onBack={backToLanding}
+          />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-dark min-h-screen overflow-x-hidden">
-      <Header onGetStarted={goToSetup} />
+      <Header onGetStarted={goToSetup} onGoToProfile={goToProfile} />
       <main>
         <HeroSection onGetStarted={goToSetup} />
         <FeaturesSection />
