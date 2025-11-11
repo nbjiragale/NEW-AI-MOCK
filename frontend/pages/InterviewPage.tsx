@@ -118,9 +118,13 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   const interviewersDetails = interviewerDetails || [{ name: 'Interviewer', role: 'AI' }];
 
   const [timeLeft, setTimeLeft] = useState(0);
+  const [isTimeUp, setIsTimeUp] = useState(false);
+  const [inQnaMode, setInQnaMode] = useState(false);
+  const [isTimerEnabled, setIsTimerEnabled] = useState(false);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const sessionManagerRef = useRef<{ close: () => void; askQuestion?: (type: Persona) => void; } | null>(null);
+  const sessionManagerRef = useRef<{ close: () => void; askQuestion?: (type: Persona) => void; askForCandidateQuestions?: () => void; } | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [streamLoaded, setStreamLoaded] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
@@ -155,10 +159,13 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   const canShowHandsOnButton = (setupData?.interviewType === 'Technical' || setupData?.interviewType === 'Combined') && hasHandsOnQuestions;
 
   useEffect(() => {
-    if (setupData?.duration) {
+    if (setupData?.type === 'Practice Mode') {
+      setIsTimerEnabled(false);
+    } else if (setupData?.duration) {
       const durationMinutes = parseInt(setupData.duration, 10);
       if (!isNaN(durationMinutes)) {
         setTimeLeft(durationMinutes * 60);
+        setIsTimerEnabled(true);
       }
     }
     const hsQuestions = interviewQuestions?.handsOnQuestions || [];
@@ -174,14 +181,27 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   }, [setupData, interviewQuestions]);
 
   useEffect(() => {
-    if (timeLeft <= 0) return;
+    if (!isTimerEnabled || isTimeUp) return; // Timer is stopped
+
+    if (timeLeft <= 0) {
+      setIsTimeUp(true);
+      // Mute user mic when time is up, before they decide to ask questions
+      if (streamRef.current) {
+        const audioTrack = streamRef.current.getAudioTracks()[0];
+        if (audioTrack) {
+          audioTrack.enabled = false;
+          setIsMicOn(false);
+        }
+      }
+      return;
+    }
 
     const timerId = setInterval(() => {
       setTimeLeft(prevTime => prevTime - 1);
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [timeLeft]);
+  }, [timeLeft, isTimeUp, isTimerEnabled]);
 
   const formatTime = (seconds: number) => {
     if (seconds < 0) seconds = 0;
@@ -464,6 +484,19 @@ ${questionList}
     }
   };
 
+  const handleAskCandidateQuestions = () => {
+    setInQnaMode(true);
+    sessionManagerRef.current?.askForCandidateQuestions?.();
+    // Re-enable mic so user can ask their question
+    if (streamRef.current) {
+        const audioTrack = streamRef.current.getAudioTracks()[0];
+        if (audioTrack) {
+            audioTrack.enabled = true;
+            setIsMicOn(true);
+        }
+    }
+  };
+
   const getTranscriptStatus = () => {
     switch(sessionStatus) {
       case 'CONNECTING':
@@ -522,7 +555,7 @@ ${questionList}
   }
 
   return (
-    <div className="bg-dark h-screen w-screen flex flex-col text-white font-sans">
+    <div className="bg-dark h-screen w-screen flex flex-col text-white font-sans relative">
       {/* ======================================================================
       IMPROVEMENT 1: Unified Header Bar
       ======================================================================
@@ -571,10 +604,12 @@ ${questionList}
                     </div>
                 </div>
             )}
-            <div className="text-sm text-gray-300 bg-slate-800 px-4 py-2 rounded-md border border-slate-700">
-                <span className="text-gray-400">Time Left: </span>
-                <span className="font-mono font-semibold tracking-wider text-white">{formatTime(timeLeft)}</span>
-            </div>
+            {isTimerEnabled && (
+                <div className={`text-sm text-gray-300 bg-slate-800 px-4 py-2 rounded-md border border-slate-700 transition-colors ${isTimeUp ? 'border-red-500/50' : ''}`}>
+                    <span className="text-gray-400">Time Left: </span>
+                    <span className={`font-mono font-semibold tracking-wider ${isTimeUp ? 'text-red-400 animate-pulse' : 'text-white'}`}>{formatTime(timeLeft)}</span>
+                </div>
+            )}
         </div>
       </header>
       
@@ -856,6 +891,29 @@ ${questionList}
           </div>
         )}
       </main>
+
+      {isTimerEnabled && isTimeUp && !inQnaMode && !showLeaveConfirm && (
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-30 animate-fade-in-up" style={{ animationDuration: '0.5s' }}>
+            <div className="bg-slate-800 rounded-lg shadow-xl p-8 max-w-md w-full border border-slate-700 text-center">
+                <h3 className="text-2xl font-bold text-white mb-4">Time's Up!</h3>
+                <p className="text-gray-300 mb-8">The main part of your interview is complete. You can now end the session or ask any questions you may have for the interviewer.</p>
+                <div className="flex flex-col gap-4">
+                    <button
+                        onClick={handleAskCandidateQuestions}
+                        className="w-full bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-500 transition-transform transform hover:scale-105"
+                    >
+                        I have questions
+                    </button>
+                    <button
+                        onClick={() => setShowLeaveConfirm(true)}
+                        className="w-full bg-slate-700 text-white font-semibold py-3 px-6 rounded-md hover:bg-slate-600 transition"
+                    >
+                        End Interview
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
       
       {showLeetcodeModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-up" style={{ animationDuration: '0.3s' }}>

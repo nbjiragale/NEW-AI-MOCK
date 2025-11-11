@@ -67,7 +67,7 @@ export const initiateLiveSession = async ({
   systemInstruction,
   onTranscriptionUpdate,
   onAudioFinished,
-}: InitiateLiveSessionParams): Promise<{ close: () => void }> => {
+}: InitiateLiveSessionParams): Promise<{ close: () => void; askForCandidateQuestions: () => void; }> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
   const inputAudioContext = new ((window as any).AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
@@ -175,6 +175,10 @@ export const initiateLiveSession = async ({
       session.close();
       inputAudioContext.close().catch(console.error);
       outputAudioContext.close().catch(console.error);
+    },
+    askForCandidateQuestions: () => {
+      // This prompt instructs the AI to invite questions from the candidate.
+      session.sendRealtimeInput({ text: 'The interview time is up. The candidate has questions for you. Please say "Of course, what questions do you have for me?" and then wait for their question.' });
     },
   };
 };

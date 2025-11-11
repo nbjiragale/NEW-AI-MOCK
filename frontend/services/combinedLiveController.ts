@@ -161,6 +161,17 @@ export class CombinedLiveController {
         activeSession?.sendRealtimeInput({ text: contextPrompt });
     }
 
+    public askForCandidateQuestions() {
+        if (this.isClosing) return;
+
+        // The Hiring Manager (behavioral persona) is best suited to handle candidate questions.
+        this.activePersona = 'behavioral';
+        const activeSession = this.sessions.behavioral;
+        if (activeSession) {
+            activeSession.sendRealtimeInput({ text: 'The main interview time is up. The candidate now has some questions for you. Please say something like "Absolutely, I\'d be happy to answer any questions you have. What\'s on your mind?" and then wait for their question.' });
+        }
+    }
+
     public close() {
         if (this.isClosing) return;
         this.isClosing = true;
