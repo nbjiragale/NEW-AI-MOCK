@@ -98,7 +98,7 @@ interface TranscriptItem {
 }
 
 interface InterviewPageProps {
-  onLeave: (transcript: TranscriptItem[], duration: number) => void;
+  onLeave: (transcript: TranscriptItem[], duration: number, frames: string[]) => void;
   setupData: any;
   interviewQuestions: any;
   interviewerDetails: any[];
@@ -134,6 +134,9 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   const animationFrameIdRef = useRef<number | null>(null);
   const isSpeakingRef = useRef(false);
   const startTimeRef = useRef<number | null>(null);
+  const [capturedFrames, setCapturedFrames] = useState<string[]>([]);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const frameCaptureIntervalRef = useRef<number | null>(null);
 
   // State for coding mode
   const [isCodingMode, setIsCodingMode] = useState(false);
@@ -390,39 +393,39 @@ ${questionList}
     };
   }, [isCombinedMode]); // Rerun effect if mode changes, though it shouldn't in practice.
 
-  // This useEffect causes the user's mic to be muted as soon as the AI starts responding,
-  // even if the user is still finishing their sentence. This cuts off the audio stream
-  // and stops transcription prematurely for longer answers. Removing it allows for
-  // natural barge-in, which the Gemini Live API is designed to handle.
-  /*
-  useEffect(() => {
-    // Automatically mute/unmute microphone based on AI speaking state
-    if (streamRef.current) {
-      const audioTrack = streamRef.current.getAudioTracks()[0];
-      if (audioTrack) {
-        if (isAiSpeaking) {
-          // AI is speaking, so mute the user's mic.
-          if (isMicOn) {
-            audioTrack.enabled = false;
-            setIsMicOn(false);
-          }
-        } else {
-          // AI has finished speaking, so unmute the user's mic for them to respond.
-          if (!isMicOn) {
-            audioTrack.enabled = true;
-            setIsMicOn(true);
-          }
-        }
-      }
-    }
-  }, [isAiSpeaking]);
-  */
-
   useEffect(() => {
     if (streamLoaded && videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
     }
   }, [streamLoaded, isCodingMode]);
+
+  useEffect(() => {
+    if (streamLoaded && videoRef.current) {
+        // Start frame capture
+        const videoElement = videoRef.current;
+        const canvasElement = canvasRef.current;
+        if (!canvasElement) return;
+
+        const context = canvasElement.getContext('2d');
+        if (!context) return;
+
+        frameCaptureIntervalRef.current = window.setInterval(() => {
+            if (videoElement.readyState >= 2 && isCameraOn) { // Check if video is ready and camera is on
+                canvasElement.width = videoElement.videoWidth;
+                canvasElement.height = videoElement.videoHeight;
+                context.drawImage(videoElement, 0, 0, videoElement.videoWidth, videoElement.videoHeight);
+                const frame = canvasElement.toDataURL('image/jpeg', 0.5); // 50% quality JPEG
+                setCapturedFrames(prev => [...prev, frame.split(',')[1]]); // Store only base64 part
+            }
+        }, 5000); // Capture a frame every 5 seconds
+    }
+
+    return () => {
+        if (frameCaptureIntervalRef.current) {
+            clearInterval(frameCaptureIntervalRef.current);
+        }
+    };
+  }, [streamLoaded, isCameraOn]);
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -477,7 +480,7 @@ ${questionList}
     sessionManagerRef.current?.close();
     const endTime = Date.now();
     const durationInSeconds = startTimeRef.current ? Math.round((endTime - startTimeRef.current) / 1000) : 0;
-    onLeave(transcript, durationInSeconds);
+    onLeave(transcript, durationInSeconds, capturedFrames);
   };
   
   const handleAskQuestion = (type: Persona) => {
@@ -558,6 +561,7 @@ ${questionList}
 
   return (
     <div className="bg-dark h-screen w-screen flex flex-col text-white font-sans relative">
+      <canvas ref={canvasRef} style={{ display: 'none' }}></canvas>
       {/* ======================================================================
       IMPROVEMENT 1: Unified Header Bar
       ======================================================================
