@@ -94,9 +94,7 @@ export const initiateLiveSession = async ({
           const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
           const pcmBlob = createBlob(inputData);
           sessionPromise.then((session) => {
-            if (stream.getAudioTracks()[0].enabled) {
-              session.sendRealtimeInput({ media: pcmBlob });
-            }
+            session.sendRealtimeInput({ media: pcmBlob });
           });
         };
         source.connect(scriptProcessor);

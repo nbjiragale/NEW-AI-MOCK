@@ -325,9 +325,7 @@ Here is your list of main questions to guide your part of the conversation:\n${q
             const pcmBlob = createBlob(inputData);
 
             activeSessionPromise.then((session) => {
-                if (this.userStream?.getAudioTracks()[0].enabled) {
-                    session.sendRealtimeInput({ media: pcmBlob });
-                }
+                session.sendRealtimeInput({ media: pcmBlob });
             });
         };
         source.connect(this.scriptProcessorNode);
