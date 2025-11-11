@@ -4,6 +4,9 @@ import { downloadReportAsPdf } from '../services/pdfGenerator';
 import { generateHolisticAnalysis } from '../services/geminiForHolisticAnalysis';
 import { EyeIcon } from '../icons/EyeIcon';
 import { SoundWaveIcon } from '../icons/SoundWaveIcon';
+import DeepDiveModal from '../components/DeepDiveModal';
+import { SearchIcon } from '../icons/SearchIcon';
+import { ClipboardListIcon } from '../icons/ClipboardListIcon';
 
 // TypeScript declarations for CDN libraries
 declare var jspdf: any;
@@ -92,6 +95,7 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
     const [isLoading, setIsLoading] = useState(true);
     const [isHolisticLoading, setIsHolisticLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [deepDiveData, setDeepDiveData] = useState<{ question: string; answer: string } | null>(null);
     
     useEffect(() => {
         const fetchReports = async () => {
@@ -153,6 +157,20 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
         }
     };
     
+    const handleDeepDiveClick = (answerIndex: number) => {
+        if (transcript && answerIndex > 0 && transcript[answerIndex - 1].speaker !== 'You') {
+            setDeepDiveData({
+                question: transcript[answerIndex - 1].text,
+                answer: transcript[answerIndex].text
+            });
+        } else if (transcript) {
+            setDeepDiveData({
+                question: "Could not determine the exact question. The context was the start of the conversation.",
+                answer: transcript[answerIndex].text
+            });
+        }
+    };
+
     const renderContent = () => {
         if (isLoading) {
             return (
@@ -243,6 +261,30 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                         {report.actionableSuggestions.map((item, index) => <li key={index}>{item}</li>)}
                     </ul>
                 </ReportSection>
+
+                {transcript && transcript.length > 0 && (
+                    <ReportSection icon={<ClipboardListIcon className="h-8 w-8 text-blue-400" />} title="Interview Transcript">
+                        <div className="space-y-4 max-h-96 overflow-y-auto p-2 bg-slate-900/50 rounded-md">
+                            {transcript.map((item, index) => (
+                                <div key={index} className="flex flex-col group">
+                                    <div className={`rounded-lg px-3 py-2 max-w-[90%] ${item.speaker === 'You' ? 'bg-blue-600/50 self-end' : 'bg-slate-700/80 self-start'}`}>
+                                        <p className="text-xs font-bold mb-1 text-white">{item.speaker}</p>
+                                        <p className="text-sm text-gray-200">{item.text}</p>
+                                    </div>
+                                    {item.speaker === 'You' && (
+                                        <button 
+                                            onClick={() => handleDeepDiveClick(index)}
+                                            className="mt-1.5 self-end flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-opacity opacity-0 group-hover:opacity-100"
+                                        >
+                                            <SearchIcon className="h-3.5 w-3.5" />
+                                            <span>Deep Dive</span>
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </ReportSection>
+                )}
             </div>
         );
     }
@@ -281,6 +323,14 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                     )}
                 </div>
             </div>
+            {deepDiveData && (
+                <DeepDiveModal
+                    isOpen={!!deepDiveData}
+                    onClose={() => setDeepDiveData(null)}
+                    question={deepDiveData.question}
+                    answer={deepDiveData.answer}
+                />
+            )}
         </section>
     );
 };
