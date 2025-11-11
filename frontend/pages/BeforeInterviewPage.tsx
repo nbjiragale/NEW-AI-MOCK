@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { checkDetailsConsistency, validateCompany, generateInterviewQuestions } from '../services/geminiStartInterview';
+import { CheckCircleIcon } from '../icons/CheckCircleIcon';
+import { ChevronRightIcon } from '../icons/ChevronRightIcon';
+import { XCircleIcon } from '../icons/XCircleIcon';
 
 interface BeforeInterviewPageProps {
     setupData: any;
@@ -7,53 +10,9 @@ interface BeforeInterviewPageProps {
     onStartInterview: (questions: any, interviewerDetails: any) => void;
 }
 
-type Stage = 
-    'initializing' | 
-    'consistency_check' | 
-    'inconsistent' |
-    'company_check' |
-    'invalid_company' |
-    'generating_questions' |
-    'countdown' |
-    'error';
-
-const CheckIcon: React.FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-    </svg>
-);
-
-const CrossIcon: React.FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-    </svg>
-);
-
-const SpinnerIcon: React.FC = () => (
-    <svg className="animate-spin h-6 w-6 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>
-);
-
 const interviewerNames = [
-  'Anna', 'Lily', 'Sara', 'Nina',
-  'Emma', 'Zoe', 'Lucy', 'Ruby', 'Ella',
-  'Kate', 'Leah', 'Ivy', 'Maya', 'Tina',
-  'Amy', 'Chloe', 'Nora', 'Lila', 'Grace', 'Eva'
-];
-
-
-const interviewTips = [
-  "Research the company and the role thoroughly before the interview.",
-  "Prepare using the STAR method (Situation, Task, Action, Result) for behavioral questions.",
-  "Have a few insightful questions ready to ask your interviewer.",
-  "Practice your answers out loud to build confidence and fluency.",
-  "Dress professionally, even for a remote interview.",
-  "Ensure your internet connection and audio/video are working correctly beforehand.",
-  "Listen carefully to the question before you start answering.",
-  "Don't be afraid to take a moment to think before you speak.",
-  "End the interview on a positive note by thanking the interviewer for their time."
+  'Anna', 'Lily', 'Sara', 'Nina', 'Emma', 'Zoe', 'Lucy', 'Ruby', 'Ella',
+  'Kate', 'Leah', 'Ivy', 'Maya', 'Tina', 'Amy', 'Chloe', 'Nora', 'Lila', 'Grace', 'Eva'
 ];
 
 const getRandomNames = (count: number): string[] => {
@@ -71,289 +30,248 @@ const getInterviewerDetails = (setupData: any) => {
       { name: randomNames[2], role: 'HR Specialist' },
     ];
   }
-
   let role = 'Interviewer';
   const name = getRandomNames(1)[0];
   switch (setupData?.interviewType) {
-    case 'Technical':
-      role = 'Software Engineer';
-      break;
-    case 'Behavioral/Managerial':
-      role = 'Hiring Manager';
-      break;
-    case 'HR':
-      role = 'HR Specialist';
-      break;
+    case 'Technical': role = 'Senior Engineer'; break;
+    case 'Behavioral/Managerial': role = 'Hiring Manager'; break;
+    case 'HR': role = 'HR Specialist'; break;
   }
   return [{ name, role }];
 };
 
+interface LogEntry {
+  id: number;
+  text: string;
+  status: 'running' | 'done' | 'error' | 'paused';
+}
+
+const useTypingEffect = (text: string, speed = 20, start = true) => {
+    const [displayedText, setDisplayedText] = useState('');
+    useEffect(() => {
+        if (!start || !text) {
+            setDisplayedText('');
+            return;
+        };
+        setDisplayedText('');
+        let i = 0;
+        const intervalId = setInterval(() => {
+            if (i < text.length) {
+                setDisplayedText(prev => prev + text.charAt(i));
+                i++;
+            } else {
+                clearInterval(intervalId);
+            }
+        }, speed);
+        return () => clearInterval(intervalId);
+    }, [text, speed, start]);
+    return displayedText;
+};
+
+const LogItem: React.FC<{ entry: LogEntry }> = ({ entry }) => {
+    const displayText = useTypingEffect(entry.text, 20, entry.status === 'running');
+    const Icon = () => {
+        switch (entry.status) {
+            case 'done': return <CheckCircleIcon className="w-5 h-5 text-green-400" />;
+            case 'error': return <XCircleIcon className="w-5 h-5 text-red-400" />;
+            default: return <ChevronRightIcon className="w-5 h-5 text-primary" />;
+        }
+    };
+    return (
+        <div className="flex items-start gap-3 font-mono text-base animate-fade-in-up" style={{ animationDuration: '0.3s' }}>
+            <div className="flex-shrink-0 pt-0.5"><Icon /></div>
+            <p className={`${entry.status === 'error' ? 'text-red-400' : 'text-gray-300'}`}>
+                {entry.status === 'running' ? displayText : entry.text}
+                {entry.status === 'running' && <span className="inline-block w-2 h-4 bg-primary ml-1 animate-blink"></span>}
+            </p>
+        </div>
+    );
+};
+
 const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, onEdit, onStartInterview }) => {
-    const [stage, setStage] = useState<Stage>('initializing');
-    const [message, setMessage] = useState('');
-    const [countdown, setCountdown] = useState(10);
-    const [interviewerDetails, setInterviewerDetails] = useState<any[] | null>(null);
-    const [currentTipIndex, setCurrentTipIndex] = useState(0);
-    const [tipAnimation, setTipAnimation] = useState('animate-slide-in-right');
+    const [logs, setLogs] = useState<LogEntry[]>([]);
+    const [processStatus, setProcessStatus] = useState<'running' | 'paused' | 'error' | 'finished'>('running');
+    const [pauseReason, setPauseReason] = useState<'inconsistent' | 'invalid_company' | null>(null);
+    const [countdown, setCountdown] = useState(5);
+    const [showConsole, setShowConsole] = useState(true);
+
+    const interviewerDetailsRef = useRef(getInterviewerDetails(setupData));
     const generatedQuestionsRef = useRef<any>(null);
     const processingStateRef = useRef({ hasStarted: false });
 
-    useEffect(() => {
-        // Fix: Replace NodeJS.Timeout with 'number' for browser compatibility and initialize to undefined.
-        let timer: number | undefined;
-        if (stage === 'countdown') {
-            document.title = `Starting in ${countdown}...`;
-            if (countdown > 0) {
-                timer = window.setTimeout(() => setCountdown(c => c - 1), 1000);
-            } else {
-                onStartInterview(generatedQuestionsRef.current, interviewerDetails);
+    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+    const addLog = (text: string, status: LogEntry['status'] = 'running') => {
+        setLogs(prev => [...prev.map(l => ({ ...l, status: l.status === 'running' ? 'paused' : l.status })), { id: Date.now(), text, status }]);
+    };
+    const updateLastLog = (text: string, status: LogEntry['status']) => {
+        setLogs(prev => {
+            const newLogs = [...prev];
+            if (newLogs.length > 0) {
+                newLogs[newLogs.length - 1] = { ...newLogs[newLogs.length - 1], text, status };
             }
-        }
-        return () => {
-            clearTimeout(timer);
-            document.title = 'AI Mock Interview';
-        }
-    }, [stage, countdown, onStartInterview, interviewerDetails]);
+            return newLogs;
+        });
+    };
 
-    useEffect(() => {
-        // Fix: Replace NodeJS.Timeout with 'number' for browser compatibility.
-        let tipInterval: number | null = null;
-        if (stage === 'generating_questions') {
-            tipInterval = window.setInterval(() => {
-                setTipAnimation('animate-slide-out-left');
-                setTimeout(() => {
-                    setCurrentTipIndex(prevIndex => (prevIndex + 1) % interviewTips.length);
-                    setTipAnimation('animate-slide-in-right');
-                }, 500); // Corresponds to animation duration
-            }, 4000); // Change tip every 4 seconds
-        }
-
-        return () => {
-            if (tipInterval) {
-                clearInterval(tipInterval);
-            }
-        };
-    }, [stage]);
-
-
-    const startProcess = async (forceCompany = false) => {
+    const runProcess = async (skipCompanyCheck = false) => {
+        setProcessStatus('running');
+        setPauseReason(null);
+        
         try {
-            // 1. Consistency Check
-            setStage('consistency_check');
+            // --- Consistency Check ---
+            addLog(`First, I'm reviewing your profile for the "${setupData.role}" role...`);
+            await delay(1500);
+            updateLastLog(`First, I'm reviewing your profile for the "${setupData.role}" role...`, 'paused');
+            
             const consistencyResult = await checkDetailsConsistency(setupData);
             if (!consistencyResult.isConsistent) {
-                setStage('inconsistent');
-                setMessage(consistencyResult.reasoning);
+                updateLastLog(`Hmm, something seems off. ${consistencyResult.reasoning}`, 'error');
+                setProcessStatus('paused');
+                setPauseReason('inconsistent');
                 return;
             }
+            updateLastLog('Looks good. Your profile details are consistent.', 'done');
+            await delay(1000);
 
-            // 2. Company Check
-            await processCompany(forceCompany);
+            // --- Company Check ---
+            if (setupData.targetCompany && setupData.type !== 'Practice Mode' && !skipCompanyCheck) {
+                addLog(`Now, I'm quickly verifying the company: "${setupData.targetCompany}"...`);
+                await delay(1500);
+                const companyResult = await validateCompany(setupData.targetCompany);
+                if (!companyResult.companyExists) {
+                    updateLastLog(`I'm having a bit of trouble with the company name. ${companyResult.reasoning}`, 'error');
+                    setProcessStatus('paused');
+                    setPauseReason('invalid_company');
+                    return;
+                }
+                updateLastLog('Company verified. Great!', 'done');
+                await delay(1000);
+            }
+
+            // --- Question Generation ---
+            addLog('Alright, everything checks out. Time to prepare our conversation.');
+            await delay(1500);
+            updateLastLog('Alright, everything checks out. Time to prepare our conversation.', 'done');
+
+            addLog(`I'm tailoring questions for a candidate with ${setupData.experience || 'your specified'} years of experience.`);
+            await delay(1500);
+            updateLastLog(`I'm tailoring questions for a candidate with ${setupData.experience || 'your specified'} years of experience.`, 'done');
             
+            addLog('Generating a personalized set of interview questions...');
+            const questions = setupData?.practiceType === 'By List of Questions'
+              ? { theoryQuestions: setupData.questionList.split('\n').filter((q: string) => q.trim() !== '') }
+              : await generateInterviewQuestions(setupData);
+            generatedQuestionsRef.current = questions;
+            await delay(2000);
+            updateLastLog('The questions are ready.', 'done');
+            
+            addLog('Finalizing the session setup...');
+            await delay(1000);
+            updateLastLog('All set! The interview will begin shortly.', 'done');
+            setProcessStatus('finished');
+
         } catch (err) {
             console.error("Error during pre-interview setup:", err);
-            setStage('error');
-            setMessage(err instanceof Error ? err.message : 'An unknown error occurred.');
+            const message = err instanceof Error ? err.message : 'An unknown error occurred.';
+            updateLastLog(`A system error occurred: ${message}`, 'error');
+            setProcessStatus('error');
         }
     };
     
-    const processCompany = async (forceCompany = false) => {
-        try {
-            if (setupData.targetCompany && setupData.type !== 'Practice Mode' && !forceCompany) {
-                setStage('company_check');
-                const companyResult = await validateCompany(setupData.targetCompany);
-                if (!companyResult.companyExists) {
-                    setStage('invalid_company');
-                    setMessage(companyResult.reasoning);
-                    return;
-                }
-            }
-            // 3. Generate Questions
-            await generateQuestions();
-        } catch (err) {
-             console.error("Error during company check:", err);
-             setStage('error');
-             setMessage(err instanceof Error ? err.message : 'An unknown error occurred.');
+    const startPreparation = async (isRetry = false) => {
+        const initialMessage = isRetry ? "Okay, let's try that again..." : "Okay, let's get you set up...";
+        setLogs([]);
+        setProcessStatus('running');
+        setPauseReason(null);
+        
+        await delay(200);
+        
+        addLog(initialMessage);
+        await delay(1500);
+        updateLastLog(initialMessage, 'done');
+        
+        runProcess();
+    };
+    
+    useEffect(() => {
+        if (processStatus === 'finished') {
+            setTimeout(() => setShowConsole(false), 1000); // Allow time to read final log
         }
-    };
+    }, [processStatus]);
 
-    const generateQuestions = async () => {
-         try {
-            setStage('generating_questions');
-            if (setupData?.practiceType === 'By List of Questions') {
-                const questions = {
-                    companySpecificQuestions: [],
-                    theoryQuestions: setupData.questionList.split('\n').filter((q: string) => q.trim() !== ''),
-                    handsOnQuestions: [],
-                };
-                generatedQuestionsRef.current = questions;
+    useEffect(() => {
+        if (!showConsole) {
+            document.title = `Starting in ${countdown}...`;
+            if (countdown > 0) {
+                const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+                return () => clearTimeout(timer);
             } else {
-                const questions = await generateInterviewQuestions(setupData);
-                generatedQuestionsRef.current = questions;
+                onStartInterview(generatedQuestionsRef.current, interviewerDetailsRef.current);
             }
-            
-            const details = getInterviewerDetails(setupData);
-            setInterviewerDetails(details);
-            
-            setStage('countdown');
-         } catch (err) {
-             console.error("Error generating questions:", err);
-             setStage('error');
-             setMessage(err instanceof Error ? err.message : 'An unknown error occurred.');
-         }
-    };
-
-
+        }
+        return () => { document.title = 'AI Mock Interview'; };
+    }, [showConsole, countdown, onStartInterview]);
+    
     useEffect(() => {
         if (!processingStateRef.current.hasStarted) {
             processingStateRef.current.hasStarted = true;
-            startProcess();
+            startPreparation(false);
         }
     }, []);
 
-    const renderContent = () => {
-        switch (stage) {
-            case 'initializing':
-            case 'consistency_check':
-            case 'company_check':
-            case 'generating_questions':
-                const checks = [
-                    { name: 'Profile Consistency', stage: 'consistency_check', doneStages: ['company_check', 'generating_questions', 'countdown'] },
-                    { name: 'Company Verification', stage: 'company_check', doneStages: ['generating_questions', 'countdown'] },
-                    { name: 'Generating Questions', stage: 'generating_questions', doneStages: ['countdown'] }
-                ];
-                return (
-                    <>
-                        <h2 className="text-3xl font-bold text-white mb-4 text-center">Preparing your session...</h2>
-                        <div className="space-y-4">
-                            {checks.map(check => {
-                                const isDone = check.doneStages.includes(stage) || (stage === 'generating_questions' && check.stage !== 'generating_questions');
-                                const isRunning = stage === check.stage;
-                                return (
-                                    <div key={check.name} className="flex items-center gap-4 p-4 bg-slate-800 rounded-lg">
-                                        {isDone ? <CheckIcon /> : isRunning ? <SpinnerIcon /> : <div className="h-6 w-6 border-2 border-slate-600 rounded-full"></div>}
-                                        <span className={`text-lg ${isDone || isRunning ? 'text-white' : 'text-gray-500'}`}>{check.name}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </>
-                );
-            case 'inconsistent':
-            case 'invalid_company':
-            case 'error':
-                return (
-                    <div className="text-center">
-                        <div className="mx-auto bg-red-500/20 rounded-full h-16 w-16 flex items-center justify-center mb-4">
-                           <CrossIcon />
-                        </div>
-                        <h2 className="text-2xl font-bold text-white mb-2">{stage === 'inconsistent' ? 'Profile Inconsistent' : stage === 'invalid_company' ? 'Company Not Verified' : 'An Error Occurred'}</h2>
-                        <p className="text-gray-400 mb-6">{message}</p>
-                        <div className="flex gap-4">
-                            <button onClick={onEdit} className="flex-1 bg-slate-700 text-white font-bold py-3 px-6 rounded-lg hover:bg-slate-600 transition">Edit Details</button>
-                            {stage !== 'error' && (
-                                <button onClick={() => stage === 'inconsistent' ? processCompany() : startProcess(true)} className="flex-1 bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-500 transition">
-                                    {stage === 'inconsistent' ? 'Proceed Anyway' : 'Force Add & Proceed'}
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                );
-             case 'countdown':
-                 const isCombined = interviewerDetails && interviewerDetails.length > 1;
-
-                 if (isCombined) {
-                    return (
-                        <div className="text-center flex flex-col items-center">
-                             <h2 className="text-2xl font-bold text-white mb-6">Your panel is joining...</h2>
-                             <div className="flex justify-center items-start gap-4 md:gap-8 mb-8">
-                                {interviewerDetails.map((interviewer, index) => {
-                                    const hasJoined = countdown <= 10 - (index + 1) * 2;
-                                    return (
-                                        <div key={interviewer.name} className={`flex flex-col items-center transition-all duration-500 ${hasJoined ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                                            <div className="relative mb-3">
-                                                <div className="h-20 w-20 rounded-full bg-slate-700 flex items-center justify-center ring-4 ring-slate-600">
-                                                    <span className="text-3xl font-bold text-primary">{interviewer.name.charAt(0)}</span>
-                                                </div>
-                                                 {hasJoined && (
-                                                    <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-slate-800 rounded-full flex items-center justify-center border-2 border-slate-800/50">
-                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/50 opacity-75"></span>
-                                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                                                    </div>
-                                                 )}
-                                            </div>
-                                            <p className="font-semibold text-white">{interviewer.name}</p>
-                                            <p className="text-sm text-gray-400">{interviewer.role}</p>
-                                        </div>
-                                    )
-                                })}
-                             </div>
-                            <div className="w-full bg-slate-700 rounded-full h-2.5">
-                                <div 
-                                    className="bg-primary h-2.5 rounded-full" 
-                                    style={{ 
-                                        width: `${(10 - countdown) * 10}%`, 
-                                        transition: 'width 1s linear' 
-                                    }}
-                                ></div>
-                            </div>
-                            <p className="text-5xl font-bold text-white mt-4 font-mono">{countdown}</p>
-                        </div>
-                    );
-                 }
-                 
-                 const primaryInterviewer = interviewerDetails ? interviewerDetails[0] : { name: 'Interviewer', role: '' };
-                 const initial = primaryInterviewer.name.charAt(0);
-
-                 return (
-                    <div className="text-center flex flex-col items-center">
-                        <div className="relative mb-6">
-                            <div className="h-24 w-24 rounded-full bg-slate-700 flex items-center justify-center ring-4 ring-slate-600">
-                                <span className="text-4xl font-bold text-primary">{initial}</span>
-                            </div>
-                             <div className="absolute -bottom-1 -right-1 h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center border-4 border-slate-800/50">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/50 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-4 w-4 bg-primary"></span>
-                             </div>
-                        </div>
-                        <h2 className="text-2xl font-bold text-white mb-2">{primaryInterviewer.name} is joining...</h2>
-                        <p className="text-gray-400 mb-8">Your session will begin automatically.</p>
-                        
-                        <div className="w-full bg-slate-700 rounded-full h-2.5">
-                            <div 
-                                className="bg-primary h-2.5 rounded-full" 
-                                style={{ 
-                                    width: `${(10 - countdown) * 10}%`, 
-                                    transition: 'width 1s linear' 
-                                }}
-                            ></div>
-                        </div>
-                        <p className="text-5xl font-bold text-white mt-4 font-mono">{countdown}</p>
-                    </div>
-                 );
-        }
-    };
+    const primaryInterviewer = interviewerDetailsRef.current[0];
 
     return (
-        <section className="min-h-screen flex items-center justify-center py-12">
-            <div className="container mx-auto px-6">
-                <div className="max-w-md mx-auto">
-                    <div className="p-8 bg-slate-800/50 rounded-xl border border-slate-700 shadow-lg">
-                        {renderContent()}
-                    </div>
-
-                    {stage === 'generating_questions' && (
-                        <div className="mt-8 text-center">
-                            <p className="text-gray-400 text-sm mb-2">Interview Tip:</p>
-                            <div className="relative h-16 flex items-center justify-center overflow-hidden">
-                                <p className={`text-lg text-white absolute px-4 ${tipAnimation}`}>
-                                    "{interviewTips[currentTipIndex]}"
-                                </p>
-                            </div>
+        <section className="min-h-screen flex items-center justify-center py-12 px-4 relative overflow-hidden">
+            <div className="absolute inset-0 bg-grid-slate-800/[0.1] -z-10"></div>
+            
+            {showConsole && (
+                <div className="w-full max-w-3xl mx-auto animate-fade-in-up">
+                    <div className="relative bg-slate-900/70 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-xl">
+                        <div className="p-6 border-b border-slate-700 flex items-center gap-2">
+                            <span className="h-3.5 w-3.5 bg-red-500 rounded-full"></span>
+                            <span className="h-3.5 w-3.5 bg-yellow-500 rounded-full"></span>
+                            <span className="h-3.5 w-3.5 bg-green-500 rounded-full"></span>
+                            <p className="text-center flex-grow text-gray-400 font-mono text-md">Interview is setting up!</p>
                         </div>
-                    )}
+                        <div className="p-6 md:p-8 h-80 overflow-y-auto space-y-3">
+                            {logs.map(log => <LogItem key={log.id} entry={log} />)}
+                        </div>
+                        {(processStatus === 'paused' || processStatus === 'error') && (
+                             <div className="p-4 border-t border-slate-700 bg-slate-800/50 rounded-b-2xl">
+                                {processStatus === 'paused' && (
+                                    <div className="flex flex-col sm:flex-row gap-4">
+                                        <button onClick={onEdit} className="flex-1 bg-slate-600 text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-slate-500 transition-colors">Edit Details</button>
+                                        <button onClick={() => runProcess(pauseReason === 'invalid_company')} className="flex-1 bg-primary text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-blue-500 transition-colors">
+                                            Proceed Anyway
+                                        </button>
+                                    </div>
+                                )}
+                                {processStatus === 'error' && (
+                                    <div className="flex flex-col sm:flex-row gap-4">
+                                        <button onClick={onEdit} className="flex-1 bg-slate-600 text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-slate-500 transition-colors">Go Back & Edit</button>
+                                        <button onClick={() => startPreparation(true)} className="flex-1 bg-primary text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-blue-500 transition-colors">
+                                            Try Again
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
+            
+            {!showConsole && (
+                 <div className="text-center flex flex-col items-center animate-fade-in-up">
+                    <div className="relative mb-6 h-32 w-32 bg-slate-800 rounded-full flex items-center justify-center ring-8 ring-slate-700/50">
+                        <span className="text-5xl font-bold text-primary">{primaryInterviewer.name.charAt(0)}</span>
+                    </div>
+                    <h2 className="text-3xl font-bold text-white mb-2">{primaryInterviewer.name} is ready.</h2>
+                    <p className="text-gray-300 text-lg mb-8">Your session will begin in...</p>
+                    <p className="text-8xl font-bold text-white font-mono animate-pop-in" key={countdown}>{countdown}</p>
+                </div>
+            )}
         </section>
     );
 };

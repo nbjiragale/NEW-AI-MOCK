@@ -20,11 +20,15 @@
             },
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
+              mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', '"Liberation Mono"', '"Courier New"', 'monospace'],
             },
             animation: {
               'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
               'slide-in-right': 'slideInFromRight 0.5s ease-out forwards',
               'slide-out-left': 'slideOutToLeft 0.5s ease-out forwards',
+              'pop-in': 'popIn 0.5s ease-out forwards',
+              'fade-out': 'fadeOut 0.5s ease-out forwards',
+              'blink': 'blink 1s step-end infinite',
             },
             keyframes: {
               fadeInUp: {
@@ -38,6 +42,18 @@
               slideOutToLeft: {
                 '0%': { opacity: '1', transform: 'translateX(0)' },
                 '100%': { opacity: '0', transform: 'translateX(-50px)' },
+              },
+              popIn: {
+                '0%': { transform: 'scale(0.5)', opacity: '0' },
+                '70%': { transform: 'scale(1.1)', opacity: '1' },
+                '100%': { transform: 'scale(1)', opacity: '1' },
+              },
+              fadeOut: {
+                'from': { opacity: '1', transform: 'scale(1)' },
+                'to': { opacity: '0', transform: 'scale(0.95)' },
+              },
+              blink: {
+                '50%': { opacity: '0' },
               },
             },
           }
@@ -62,9 +78,29 @@
   html {
     scroll-behavior: smooth;
   }
+  @keyframes gemini-spinner-dot-pulse {
+    0%, 100% { transform: scale(0.6); opacity: 0.6; }
+    50% { transform: scale(1.2); opacity: 1; }
+  }
+  .gemini-spinner-dot {
+    animation: gemini-spinner-dot-pulse 1.4s infinite ease-in-out both;
+  }
+  .gemini-spinner-dot:nth-child(1) { animation-delay: -0.32s; }
+  .gemini-spinner-dot:nth-child(2) { animation-delay: -0.16s; }
+
+  @keyframes gradient-animation {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .animated-gradient {
+    background: linear-gradient(-45deg, #0A0A0A, #1e293b, #00A9FF, #0A0A0A);
+    background-size: 400% 400%;
+    animation: gradient-animation 15s ease infinite;
+  }
 </style>
 </head>
-  <body class="bg-dark text-gray-200 font-sans">
+  <body class="bg-dark text-gray-200 font-sans animated-gradient">
     <div id="root"></div>
     <script type="module" src="/frontend/index.tsx"></script>
   </body>
