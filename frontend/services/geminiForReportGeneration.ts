@@ -5,6 +5,32 @@ interface TranscriptItem {
     text: string;
 }
 
+// Helper function for API calls with retry logic
+const callGeminiWithRetry = async (apiCall: () => Promise<any>, maxRetries = 3) => {
+    let delay = 1000; // Start with 1 second delay
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            const result = await apiCall();
+            return result; // Success
+        } catch (error: any) {
+            console.error(`Attempt ${i + 1} failed:`, error);
+            const errorMessage = (error.message || error.toString()).toLowerCase();
+            const isOverloadedError = errorMessage.includes('503') || errorMessage.includes('overloaded');
+
+            if (isOverloadedError && i < maxRetries - 1) {
+                console.log(`Model is overloaded. Retrying in ${delay / 1000} seconds...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2; // Exponential backoff
+            } else {
+                throw error; // Re-throw on non-retryable error or last attempt
+            }
+        }
+    }
+    // This fallback should not be reached if maxRetries > 0
+    throw new Error('All retry attempts failed.');
+};
+
+
 const schema = {
     type: Type.OBJECT,
     properties: {
@@ -83,7 +109,7 @@ export const generateInterviewReport = async (setupData: any, transcript: Transc
     `;
 
     try {
-        const response = await ai.models.generateContent({
+        const apiCall = () => ai.models.generateContent({
             model: 'gemini-2.5-pro',
             contents: prompt,
             config: {
@@ -92,11 +118,13 @@ export const generateInterviewReport = async (setupData: any, transcript: Transc
                 thinkingConfig: { thinkingBudget: 32768 },
             },
         });
+        
+        const response = await callGeminiWithRetry(apiCall);
 
         const jsonText = response.text.trim();
         return JSON.parse(jsonText);
     } catch (error) {
-        console.error("Error generating interview report with Gemini API:", error);
+        console.error("Error generating interview report with Gemini API after retries:", error);
         throw new Error("Failed to generate interview report. Please try again.");
     }
 };
