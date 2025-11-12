@@ -151,7 +151,7 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
     const renderContent = () => {
         if (isLoading) {
             return (
-                <div className="text-center py-20">
+                <div className="flex flex-col items-center justify-center h-full text-center">
                     <svg className="animate-spin h-12 w-12 text-primary mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -164,47 +164,60 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
 
         if (error) {
              return (
-                <div className="text-center py-10 px-6 bg-red-900/20 border border-red-500/50 rounded-lg">
-                    <h2 className="text-2xl font-bold text-red-400 mb-2">Report Not Available</h2>
-                    <p className="text-gray-300">{error}</p>
+                <div className="flex items-center justify-center h-full p-6">
+                    <div className="text-center py-10 px-6 bg-red-900/20 border border-red-500/50 rounded-lg max-w-lg">
+                        <h2 className="text-2xl font-bold text-red-400 mb-2">Report Not Available</h2>
+                        <p className="text-gray-300">{error}</p>
+                    </div>
                 </div>
             );
         }
 
         if (report) {
             return (
-                <div className="space-y-8 animate-fade-in-up">
-                    <div className="text-center p-6 bg-slate-800/50 rounded-xl border border-slate-700">
-                        <h3 className="text-lg font-semibold text-gray-400">Overall Score</h3>
-                        <p className="text-6xl font-bold text-primary my-2">{report.overallScore}<span className="text-3xl text-gray-400">/100</span></p>
-                        <p className="text-gray-300 max-w-2xl mx-auto">{report.overallFeedback}</p>
-                    </div>
-
-                    {report.performanceBreakdown.map((item, index) => (
-                        <div key={index} className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
-                            <div className="flex justify-between items-center mb-3">
-                                <h4 className="text-xl font-bold text-white">{item.category}</h4>
-                                <span className="text-xl font-semibold text-white">{item.score}/100</span>
+                <div className="flex h-full flex-col md:flex-row">
+                    {/* Left Panel: Report */}
+                    <div className="w-full md:w-3/5 xl:w-2/3 p-4 md:p-6 lg:p-8 overflow-y-auto">
+                        <div className="space-y-8 animate-fade-in-up">
+                            <div className="text-center p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+                                <h3 className="text-lg font-semibold text-gray-400">Overall Score</h3>
+                                <p className="text-6xl font-bold text-primary my-2">{report.overallScore}<span className="text-3xl text-gray-400">/100</span></p>
+                                <p className="text-gray-300 max-w-2xl mx-auto">{report.overallFeedback}</p>
                             </div>
-                            <ScoreBar score={item.score} />
-                            <p className="text-gray-300 mt-4">{item.feedback}</p>
-                        </div>
-                    ))}
-                    
-                    <ReportSection icon={<LightbulbIcon />} title="Actionable Suggestions">
-                        <ul className="list-disc list-inside space-y-2">
-                            {report.actionableSuggestions.map((item, index) => <li key={index}>{item}</li>)}
-                        </ul>
-                    </ReportSection>
 
-                    {transcript && transcript.length > 0 && (
-                        <ReportSection icon={<ClipboardListIcon className="h-8 w-8 text-blue-400" />} title="Interview Transcript">
-                            <div className="space-y-4 max-h-96 overflow-y-auto p-2 bg-slate-900/50 rounded-md">
-                                {transcript.map((item, index) => (
+                            {report.performanceBreakdown.map((item, index) => (
+                                <div key={index} className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h4 className="text-xl font-bold text-white">{item.category}</h4>
+                                        <span className="text-xl font-semibold text-white">{item.score}/100</span>
+                                    </div>
+                                    <ScoreBar score={item.score} />
+                                    <p className="text-gray-300 mt-4">{item.feedback}</p>
+                                </div>
+                            ))}
+                            
+                            <ReportSection icon={<LightbulbIcon />} title="Actionable Suggestions">
+                                <ul className="list-disc list-inside space-y-2">
+                                    {report.actionableSuggestions.map((item, index) => <li key={index}>{item}</li>)}
+                                </ul>
+                            </ReportSection>
+                        </div>
+                    </div>
+                    {/* Right Panel: Transcript */}
+                    <div className="w-full md:w-2/5 xl:w-1/3 border-t md:border-t-0 md:border-l border-slate-700 flex flex-col">
+                        <div className="p-4 border-b border-slate-700 flex-shrink-0">
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-3">
+                                <ClipboardListIcon className="h-6 w-6 text-blue-400" />
+                                Interview Transcript
+                            </h3>
+                        </div>
+                        <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-900/50">
+                            {transcript && transcript.length > 0 ? (
+                                transcript.map((item, index) => (
                                     <div key={index} className="flex flex-col group">
                                         <div className={`rounded-lg px-3 py-2 max-w-[90%] ${item.speaker === 'You' ? 'bg-blue-600/50 self-end' : 'bg-slate-700/80 self-start'}`}>
                                             <p className="text-xs font-bold mb-1 text-white">{item.speaker}</p>
-                                            <p className="text-sm text-gray-200">{item.text}</p>
+                                            <p className="text-sm text-gray-200 break-words">{item.text}</p>
                                         </div>
                                         {item.speaker === 'You' && (
                                             <button 
@@ -216,86 +229,88 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                                             </button>
                                         )}
                                     </div>
-                                ))}
-                            </div>
-                        </ReportSection>
-                    )}
+                                ))
+                            ) : (
+                                <p className="text-gray-500 text-center py-10">No transcript available.</p>
+                            )}
+                        </div>
+                    </div>
                 </div>
             );
         }
         
         if (!setupData?.needsReport && !report && !isLoading) {
             return (
-                <div className="text-center py-10">
-                    <h2 className="text-2xl font-bold text-white mb-4">Ready for your feedback?</h2>
-                    <p className="text-gray-400 mb-8">You opted out of auto-generation, but you can generate a report now.</p>
-                    <button
-                        onClick={handleManualGenerate}
-                        disabled={isGenerating}
-                        className="flex items-center justify-center w-full sm:w-auto mx-auto bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50"
-                    >
-                        {isGenerating ? (
-                            <>
-                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Generating...
-                            </>
-                        ) : (
-                             <>
-                                <SparkleIcon className="h-5 w-5 mr-2" />
-                                Generate My Report
-                            </>
-                        )}
-                    </button>
-                </div>
+                 <div className="flex items-center justify-center h-full">
+                    <div className="text-center py-10">
+                        <h2 className="text-2xl font-bold text-white mb-4">Ready for your feedback?</h2>
+                        <p className="text-gray-400 mb-8">You opted out of auto-generation, but you can generate a report now.</p>
+                        <button
+                            onClick={handleManualGenerate}
+                            disabled={isGenerating}
+                            className="flex items-center justify-center w-full sm:w-auto mx-auto bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50"
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Generating...
+                                </>
+                            ) : (
+                                <>
+                                    <SparkleIcon className="h-5 w-5 mr-2" />
+                                    Generate My Report
+                                </>
+                            )}
+                        </button>
+                    </div>
+                 </div>
             );
         }
 
         return (
-            <div className="text-center py-20">
-                    <p className="text-gray-400">No report data available.</p>
-            </div>
+             <div className="flex items-center justify-center h-full">
+                <p className="text-gray-400">No report data available.</p>
+             </div>
         );
     }
 
     return (
-        <section className="py-16 md:py-24 animate-fade-in-up">
-            <div className="container mx-auto px-6">
-                <div className="max-w-4xl mx-auto">
-                    <div className="text-center mb-12">
-                        <h1 className="text-4xl md:text-5xl font-extrabold text-white">Interview Report</h1>
-                        <p className="mt-4 text-lg text-gray-400">
-                            Here's a detailed summary of your performance.
-                        </p>
-                    </div>
-                    
-                    <div className="bg-slate-900/50 border border-slate-700 rounded-xl shadow-2xl p-6 md:p-8">
-                        {renderContent()}
-                    </div>
-
-                    {!(isLoading) && (
-                        <div className="mt-12 flex flex-col sm:flex-row justify-center gap-4">
-                            <button 
-                                onClick={handleDownload}
-                                disabled={!report || !!error}
-                                className={`flex items-center justify-center w-full sm:w-auto bg-slate-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-600 transition-transform transform hover:scale-105 duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${!report ? 'hidden sm:hidden' : ''}`}
-                            >
-                               <DownloadIcon />
-                               Download PDF
-                            </button>
-                             <button 
-                                onClick={onStartNew}
-                                className="flex items-center justify-center w-full sm:w-auto bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20"
-                            >
-                                <RestartIcon />
-                                Practice Again
-                            </button>
-                        </div>
-                    )}
+        <section className="h-screen w-screen flex flex-col bg-dark text-white font-sans animate-fade-in-up">
+            <header className="flex-shrink-0 p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+                <div>
+                    <h1 className="text-xl md:text-2xl font-extrabold text-white">Interview Report</h1>
+                    <p className="hidden md:block mt-1 text-sm text-gray-400">
+                        Here's a detailed summary of your performance.
+                    </p>
                 </div>
-            </div>
+                {!(isLoading) && (
+                    <div className="flex items-center gap-2 md:gap-4">
+                        <button 
+                            onClick={handleDownload}
+                            disabled={!report || !!error}
+                            className={`flex items-center justify-center bg-slate-700 text-white font-bold py-2 px-4 rounded-lg text-sm hover:bg-slate-600 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${!report ? 'hidden sm:hidden' : ''}`}
+                        >
+                            <DownloadIcon />
+                            <span className="hidden md:inline">Download PDF</span>
+                        </button>
+                        <button 
+                            onClick={onStartNew}
+                            className="flex items-center justify-center bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300"
+                        >
+                            <RestartIcon />
+                            <span className="hidden md:inline">Practice Again</span>
+                        </button>
+                    </div>
+                )}
+            </header>
+            
+            <main className="flex-1 overflow-hidden">
+                {renderContent()}
+            </main>
+            
             {deepDiveData && (
                 <DeepDiveModal
                     isOpen={!!deepDiveData}

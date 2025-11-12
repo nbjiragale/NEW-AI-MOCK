@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { CameraOn } from '../icons/cameraOn';
 import { CameraOff } from '../icons/CameraOff';
 import { MicOn } from '../icons/MicOn';
@@ -6,6 +6,7 @@ import { MicOff } from '../icons/MicOff';
 import { initiateLiveSession } from '../services/geminiLiveService';
 import { CombinedLiveController } from '../services/combinedLiveController';
 import { validateAnswer } from '../services/geminiForValidation';
+import TranscriptItemView from '../components/TranscriptView';
 
 // Icons
 const PhoneHangUpIcon = () => (
@@ -95,10 +96,11 @@ const VideoPlaceholder = ({ name, role, isSpeaking }: { name: string, role: stri
 interface TranscriptItem {
     speaker: string;
     text: string;
+    id: number;
 }
 
 interface InterviewPageProps {
-  onLeave: (transcript: TranscriptItem[], duration: number) => void;
+  onLeave: (transcript: Omit<TranscriptItem, 'id'>[], duration: number) => void;
   setupData: any;
   interviewQuestions: any;
   interviewerDetails: any[];
@@ -111,6 +113,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   const [isMicOn, setIsMicOn] = useState(true);
   
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
+  const transcriptIdCounter = useRef(0);
   const [sessionStatus, setSessionStatus] = useState<'IDLE' | 'CONNECTING' | 'CONNECTED' | 'ERROR'>('IDLE');
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   
@@ -157,6 +160,20 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
 
   const hasHandsOnQuestions = handsOnQuestions && handsOnQuestions.length > 0;
   const canShowHandsOnButton = (setupData?.interviewType === 'Technical' || setupData?.interviewType === 'Combined') && hasHandsOnQuestions;
+
+  const onTranscriptionUpdate = useCallback((newItem: { speaker: string, text: string }) => {
+    setTranscript(prev => {
+        const lastItem = prev[prev.length - 1];
+        if (lastItem && lastItem.speaker === newItem.speaker) {
+            // Continuation of the last message, update it immutably
+            const updatedItem = { ...lastItem, text: newItem.text };
+            return [...prev.slice(0, -1), updatedItem];
+        } else {
+            // New message from a new speaker
+            return [...prev, { ...newItem, id: transcriptIdCounter.current++ }];
+        }
+    });
+  }, []);
 
   useEffect(() => {
     if (setupData?.type === 'Practice Mode') {
@@ -265,16 +282,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                 callbacks: {
                     onTranscriptionUpdate: (item) => {
                         setActiveInterviewerName(item.speaker);
-                        setTranscript(prev => {
-                            const newTranscript = [...prev];
-                            const lastItem = newTranscript[newTranscript.length - 1];
-                            if (lastItem && lastItem.speaker === item.speaker) {
-                                lastItem.text = item.text;
-                            } else {
-                                newTranscript.push(item);
-                            }
-                            return newTranscript;
-                        });
+                        onTranscriptionUpdate(item);
                     },
                     onAudioStateChange: (speaking) => {
                         setIsAiSpeaking(speaking);
@@ -360,16 +368,7 @@ ${questionList}
                 stream,
                 systemInstruction,
                 onTranscriptionUpdate: (item) => {
-                    setTranscript(prev => {
-                        const newTranscript = [...prev];
-                        const lastItem = newTranscript[newTranscript.length - 1];
-                        if (lastItem && lastItem.speaker === item.speaker) {
-                            lastItem.text = item.text;
-                        } else {
-                            newTranscript.push(item);
-                        }
-                        return newTranscript;
-                    });
+                    onTranscriptionUpdate(item);
                     if (item.speaker === 'Interviewer') setIsAiSpeaking(true);
                 },
                 onAudioFinished: () => {
@@ -419,7 +418,7 @@ ${questionList}
       }
       sessionManagerRef.current?.close();
     };
-  }, [isCombinedMode]); // Rerun effect if mode changes, though it shouldn't in practice.
+  }, [isCombinedMode, onTranscriptionUpdate]); // Rerun effect if mode changes, though it shouldn't in practice.
 
   useEffect(() => {
     if (streamLoaded && videoRef.current && streamRef.current) {
@@ -480,7 +479,10 @@ ${questionList}
     sessionManagerRef.current?.close();
     const endTime = Date.now();
     const durationInSeconds = startTimeRef.current ? Math.round((endTime - startTimeRef.current) / 1000) : 0;
-    onLeave(transcript, durationInSeconds);
+    
+    // Remove id from transcript before passing it on
+    const finalTranscript = transcript.map(({ speaker, text }) => ({ speaker, text }));
+    onLeave(finalTranscript, durationInSeconds);
   };
   
   const handleAskQuestion = (type: Persona) => {
@@ -798,13 +800,8 @@ ${questionList}
                           <p className="text-gray-400 text-center">{transcriptStatusMessage}</p>
                       </div>
                       )}
-                      {transcript.map((item, index) => (
-                      <div key={index} className={`flex flex-col ${item.speaker === 'You' ? 'items-end' : 'items-start'}`}>
-                          <div className={`rounded-lg px-3 py-2 max-w-[90%] ${item.speaker === 'You' ? 'bg-primary text-white' : 'bg-slate-700'}`}>
-                          <p className="text-xs font-bold mb-1">{item.speaker}</p>
-                          <p className="text-sm">{item.text}</p>
-                          </div>
-                      </div>
+                      {transcript.map((item) => (
+                          <TranscriptItemView key={item.id} item={item} />
                       ))}
                       <div ref={transcriptEndRef} />
                   </div>
@@ -873,13 +870,8 @@ ${questionList}
                       <p className="text-gray-400 text-center">{transcriptStatusMessage}</p>
                     </div>
                   )}
-                  {transcript.map((item, index) => (
-                  <div key={index} className={`flex flex-col ${item.speaker === 'You' ? 'items-end' : 'items-start'}`}>
-                      <div className={`rounded-lg px-3 py-2 max-w-[90%] ${item.speaker === 'You' ? 'bg-primary text-white' : 'bg-slate-700'}`}>
-                      <p className="text-xs font-bold mb-1">{item.speaker}</p>
-                      <p className="text-sm">{item.text}</p>
-                      </div>
-                  </div>
+                  {transcript.map((item) => (
+                      <TranscriptItemView key={item.id} item={item} />
                   ))}
                   <div ref={transcriptEndRef} />
               </div>

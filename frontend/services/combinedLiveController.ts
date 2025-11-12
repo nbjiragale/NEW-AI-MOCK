@@ -313,7 +313,7 @@ Here is your list of main questions to guide your part of the conversation:\n${q
         if (!this.userStream) return;
         this.inputAudioContext = new ((window as any).AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
         const source = this.inputAudioContext.createMediaStreamSource(this.userStream);
-        this.scriptProcessorNode = this.inputAudioContext.createScriptProcessor(4096, 1, 1);
+        this.scriptProcessorNode = this.inputAudioContext.createScriptProcessor(1024, 1, 1);
         
         this.scriptProcessorNode.onaudioprocess = (audioProcessingEvent) => {
             if (this.isClosing || !this.activePersona) return;

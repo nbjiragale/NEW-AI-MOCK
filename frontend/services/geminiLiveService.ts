@@ -88,7 +88,7 @@ export const initiateLiveSession = async ({
       onopen: () => {
         console.log('Live session opened.');
         const source = inputAudioContext.createMediaStreamSource(stream);
-        const scriptProcessor = inputAudioContext.createScriptProcessor(4096, 1, 1);
+        const scriptProcessor = inputAudioContext.createScriptProcessor(1024, 1, 1);
         
         scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
           const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
