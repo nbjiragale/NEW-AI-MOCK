@@ -57,6 +57,7 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
     const [interviewType, setInterviewType] = useState(initialData?.interviewType || 'Technical');
     const [needsReport, setNeedsReport] = useState(initialData?.needsReport ?? true);
     const [isLoading, setIsLoading] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('Analyzing Resume...');
 
     const languages = [
         "Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "Go", "Rust", "PHP", "Ruby", "Swift", "Kotlin", "SQL"
@@ -102,19 +103,21 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const form = e.currentTarget; // Store the form element before any async calls
+        const form = e.currentTarget;
 
         if (!file) {
             alert("Please upload a resume file to analyze.");
             return;
-        };
+        }
 
         setIsLoading(true);
 
         try {
+            // Analyze the resume with Gemini
+            setLoadingMessage('Analyzing resume...');
             const analysisResult = await analyzeResume(file);
             
-            const formData = new FormData(form); // Use the stored form element
+            const formData = new FormData(form);
             const otherData = Object.fromEntries(formData.entries());
             
             const userTopics = otherData.topics as string;
@@ -124,10 +127,8 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
                 type: 'By Resume',
                 fileName: file.name,
                 fileSize: `${(file.size / 1024).toFixed(2)} KB`,
-                // Form selections
                 ...otherData,
                 needsReport,
-                // AI Extracted details, which will override any form fields with the same name if they existed
                 candidateName: analysisResult.candidateName,
                 experience: analysisResult.yearsOfExperience,
                 role: analysisResult.role,
@@ -137,15 +138,15 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
             onSubmit(combinedData);
 
         } catch (error) {
-            console.error("Error analyzing resume:", error);
-            alert("Sorry, we couldn't analyze your resume. Please check the file format (PDF, DOCX, TXT) or try again.");
+            console.error("Error in resume submission process:", error);
+            alert(error instanceof Error ? error.message : "Sorry, we couldn't process your resume. Please try again.");
         } finally {
             setIsLoading(false);
         }
     };
 
     const displayFile = file || initialFile;
-    const canSubmit = !!file; // Can only submit if a new file is staged for upload.
+    const canSubmit = !!file;
 
     return (
         <div className="relative p-6 md:p-8">
@@ -155,8 +156,8 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <p className="text-white text-lg font-semibold">Analyzing Resume...</p>
-                    <p className="text-gray-400">Please wait, we are extracting the details.</p>
+                    <p className="text-white text-lg font-semibold">{loadingMessage}</p>
+                    <p className="text-gray-400">Please wait, this may take a moment.</p>
                 </div>
             )}
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -266,7 +267,7 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
 
                 <div className="pt-4">
                     <button type="submit" className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!canSubmit || isLoading}>
-                        {isLoading ? 'Analyzing...' : 'Analyze & Start Interview'}
+                        {isLoading ? loadingMessage : 'Upload & Start Interview'}
                     </button>
                 </div>
             </form>

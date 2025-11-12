@@ -5,6 +5,7 @@ import DeepDiveModal from '../components/DeepDiveModal';
 import { SearchIcon } from '../icons/SearchIcon';
 import { ClipboardListIcon } from '../icons/ClipboardListIcon';
 import { SparkleIcon } from '../icons/SparkleIcon';
+import { ReportData } from '../types';
 
 // TypeScript declarations for CDN libraries
 declare var jspdf: any;
@@ -56,28 +57,16 @@ const ScoreBar: React.FC<{ score: number }> = ({ score }) => {
     );
 };
 
-
-interface ReportData {
-    overallScore: number;
-    overallFeedback: string;
-    performanceBreakdown: {
-        category: string;
-        score: number;
-        feedback: string;
-    }[];
-    actionableSuggestions: string[];
-}
-
 interface TranscriptItem {
     speaker: string;
     text: string;
 }
 
 interface InterviewSummaryPageProps {
-    setupData: any;
-    transcript: TranscriptItem[] | null;
-    interviewDuration: number | null;
     onStartNew: () => void;
+    setupData?: any;
+    transcript?: TranscriptItem[] | null;
+    interviewDuration?: number | null;
 }
 
 const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, transcript, interviewDuration, onStartNew }) => {
@@ -86,9 +75,9 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [deepDiveData, setDeepDiveData] = useState<{ question: string; answer: string } | null>(null);
-    
+
     useEffect(() => {
-        const fetchReport = async () => {
+        const processInterview = async () => {
             if (interviewDuration !== null && interviewDuration < 60) {
                 setError("The interview was too short (less than 1 minute) to generate a meaningful performance report. Please try again with a longer session.");
                 setIsLoading(false);
@@ -100,7 +89,7 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                 setIsLoading(false);
                 return;
             }
-            
+
             if (setupData?.needsReport) {
                 try {
                     setError(null);
@@ -109,16 +98,12 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                 } catch (e) {
                     setError("Sorry, we couldn't generate your report at this time. Our AI may be experiencing high demand. Please try again later.");
                     console.error(e);
-                } finally {
-                    setIsLoading(false);
                 }
-            } else {
-                // Don't auto-generate, just finish loading state
-                setIsLoading(false);
             }
+            setIsLoading(false);
         };
 
-        fetchReport();
+        processInterview();
     }, [setupData, transcript, interviewDuration]);
     
     const handleDownload = () => {
@@ -180,7 +165,7 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
         if (error) {
              return (
                 <div className="text-center py-10 px-6 bg-red-900/20 border border-red-500/50 rounded-lg">
-                    <h2 className="text-2xl font-bold text-red-400 mb-2">Report Not Generated</h2>
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">Report Not Available</h2>
                     <p className="text-gray-300">{error}</p>
                 </div>
             );
@@ -243,7 +228,7 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
             return (
                 <div className="text-center py-10">
                     <h2 className="text-2xl font-bold text-white mb-4">Ready for your feedback?</h2>
-                    <p className="text-gray-400 mb-8">Click the button below to generate your detailed performance report.</p>
+                    <p className="text-gray-400 mb-8">You opted out of auto-generation, but you can generate a report now.</p>
                     <button
                         onClick={handleManualGenerate}
                         disabled={isGenerating}
@@ -281,7 +266,9 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                 <div className="max-w-4xl mx-auto">
                     <div className="text-center mb-12">
                         <h1 className="text-4xl md:text-5xl font-extrabold text-white">Interview Report</h1>
-                        <p className="mt-4 text-lg text-gray-400">Here's a detailed summary of your performance.</p>
+                        <p className="mt-4 text-lg text-gray-400">
+                            Here's a detailed summary of your performance.
+                        </p>
                     </div>
                     
                     <div className="bg-slate-900/50 border border-slate-700 rounded-xl shadow-2xl p-6 md:p-8">
@@ -293,7 +280,7 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                             <button 
                                 onClick={handleDownload}
                                 disabled={!report || !!error}
-                                className={`flex items-center justify-center w-full sm:w-auto bg-slate-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-600 transition-transform transform hover:scale-105 duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${!report ? 'hidden' : ''}`}
+                                className={`flex items-center justify-center w-full sm:w-auto bg-slate-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-600 transition-transform transform hover:scale-105 duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${!report ? 'hidden sm:hidden' : ''}`}
                             >
                                <DownloadIcon />
                                Download PDF
@@ -303,7 +290,7 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                                 className="flex items-center justify-center w-full sm:w-auto bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20"
                             >
                                 <RestartIcon />
-                                Start New Interview
+                                Practice Again
                             </button>
                         </div>
                     )}

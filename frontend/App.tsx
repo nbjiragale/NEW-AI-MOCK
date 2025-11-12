@@ -12,33 +12,31 @@ import VerificationPage from './pages/VerificationPage';
 import BeforeInterviewPage from './pages/BeforeInterviewPage';
 import InterviewPage from './pages/InterviewPage';
 import InterviewSummaryPage from './pages/InterviewSummaryPage';
-import ProfilePage from './pages/ProfilePage';
 
 const App: React.FC = () => {
   const [page, setPage] = useState('landing');
+
   const [setupData, setSetupData] = useState<any>(null);
   const [interviewQuestions, setInterviewQuestions] = useState<any>(null);
   const [interviewerDetails, setInterviewerDetails] = useState<any>(null);
   const [interviewTranscript, setInterviewTranscript] = useState<any[] | null>(null);
   const [interviewDuration, setInterviewDuration] = useState<number | null>(null);
-  const [profileData, setProfileData] = useState<any>(null);
+
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [page]);
-
-  useEffect(() => {
-    // Load profile data on initial mount
-    const savedProfile = localStorage.getItem('userProfile');
-    if (savedProfile) {
-      setProfileData(JSON.parse(savedProfile));
-    }
-  }, []);
+  
+  const resetInterviewState = () => {
+      setSetupData(null);
+      setInterviewQuestions(null);
+      setInterviewerDetails(null);
+      setInterviewTranscript(null);
+      setInterviewDuration(null);
+  }
 
   const goToSetup = () => {
-    setSetupData(null); 
-    setInterviewQuestions(null);
-    setInterviewerDetails(null);
+    resetInterviewState();
     setPage('setup');
   };
   
@@ -70,26 +68,7 @@ const App: React.FC = () => {
   }
 
   const startNewInterview = () => {
-    setPage('landing');
-    setSetupData(null);
-    setInterviewQuestions(null);
-    setInterviewerDetails(null);
-    setInterviewTranscript(null);
-    setInterviewDuration(null);
-  };
-
-  const goToProfile = () => {
-    setPage('profile');
-  };
-
-  const saveProfile = (data: any) => {
-    setProfileData(data);
-    localStorage.setItem('userProfile', JSON.stringify(data));
-    alert('Profile saved successfully!');
-    setPage('landing');
-  };
-  
-  const backToLanding = () => {
+    resetInterviewState();
     setPage('landing');
   };
 
@@ -100,7 +79,6 @@ const App: React.FC = () => {
           <SetupPage 
             initialData={setupData} 
             onStart={goToVerification} 
-            profileData={profileData}
           />
         </main>
       </div>
@@ -150,30 +128,16 @@ const App: React.FC = () => {
             setupData={setupData}
             transcript={interviewTranscript}
             interviewDuration={interviewDuration}
-            onStartNew={startNewInterview} 
+            onStartNew={startNewInterview}
           />
         </main>
       </div>
     )
   }
 
-  if (page === 'profile') {
-    return (
-      <div className="bg-dark min-h-screen overflow-x-hidden">
-        <main>
-          <ProfilePage 
-            initialData={profileData}
-            onSave={saveProfile}
-            onBack={backToLanding}
-          />
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-dark min-h-screen overflow-x-hidden">
-      <Header onGetStarted={goToSetup} onGoToProfile={goToProfile} />
+      <Header onGetStarted={goToSetup} />
       <main>
         <HeroSection onGetStarted={goToSetup} />
         <FeaturesSection />

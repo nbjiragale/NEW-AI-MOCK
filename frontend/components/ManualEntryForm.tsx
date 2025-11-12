@@ -65,10 +65,9 @@ const FormToggle: React.FC<{ label: string; description: string; name: string; c
 interface ManualEntryFormProps {
     initialData?: any;
     onSubmit: (data: any) => void;
-    profileData?: any;
 }
 
-const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit, profileData }) => {
+const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit }) => {
     const [candidateName, setCandidateName] = useState(initialData?.candidateName || '');
     const [experience, setExperience] = useState(initialData?.experience || '');
     const [role, setRole] = useState(initialData?.role || '');
@@ -106,14 +105,7 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
     };
 
     const handleAutofill = () => {
-      if (profileData) {
-        setCandidateName(profileData.candidateName || candidateName);
-        setExperience(profileData.experience || experience);
-        setRole(profileData.role || role);
-        setTopics(profileData.topics || topics);
-        setLanguage(profileData.language || language);
-        setTargetCompany(profileData.targetCompany || targetCompany);
-      }
+      // This functionality is disabled as profiles are no longer saved.
     };
     
     const handleGenerateTopics = async () => {
@@ -139,7 +131,7 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
                 <button
                     type="button"
                     onClick={handleAutofill}
-                    disabled={!profileData}
+                    disabled={true}
                     className="flex items-center gap-2 text-sm text-primary/90 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed group ml-auto"
                 >
                     <SparkleIcon className="h-4 w-4 transition-transform group-hover:scale-110" />

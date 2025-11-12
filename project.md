@@ -1,11 +1,10 @@
-
 # AI Mock Interview Platform Documentation
 
 ## 1. Project Overview
 
 This project is a sophisticated, web-based AI Mock Interview platform built with React, TypeScript, and the Google Gemini API. It provides users with a realistic and interactive way to practice job interviews. The platform supports various interview formats, leverages multimodal AI capabilities for resume analysis, and offers a real-time, voice-based interview experience with instant, detailed feedback.
 
-The application is designed as a Single Page Application (SPA) that guides the user through a seamless flow from setup to the final performance report.
+The application is designed as a Single Page Application (SPA) that guides the user through a seamless, session-based flow from setup to the final performance report. All data is processed on the client-side and is not persisted between sessions.
 
 ---
 
@@ -17,7 +16,7 @@ The application is designed as a Single Page Application (SPA) that guides the u
     -   **Gemini Pro:** Used for complex reasoning, prompt-following, and JSON generation (Resume Analysis, Question Generation, Reporting, Validation).
     -   **Gemini Flash:** Used for faster, less complex tasks (Input validation).
     -   **Gemini Live API (`gemini-2.5-flash-native-audio-preview-09-2025`):** Powers the real-time, low-latency, audio-in/audio-out conversational interview experience.
--   **PDF Generation:** `html2canvas` and `jspdf` for downloading the final report.
+-   **PDF Generation:** `jspdf` for downloading the final report.
 
 ---
 
@@ -47,7 +46,7 @@ The project is organized into a `frontend` directory containing all the source c
 
 ## 4. Application Flow & State Management
 
-The entire user journey is managed within the main `frontend/App.tsx` component. It uses a state variable `page` to control which view is rendered, effectively acting as a simple router.
+The entire user journey is managed within the main `frontend/App.tsx` component. It uses a state variable `page` to control which view is rendered, effectively acting as a simple router. The application state is ephemeral and lasts only for the duration of the browser session.
 
 1.  **Landing Page:** (`page: 'landing'`)
     -   The user is presented with the marketing page (`HeroSection`, `FeaturesSection`, etc.).
@@ -69,7 +68,7 @@ The entire user journey is managed within the main `frontend/App.tsx` component.
         -   Checks for logical consistency between the role and topics.
         -   Validates the target company name.
         -   **Generates all interview questions** based on the `setupData`. This is a crucial step where complex prompt engineering is used.
-    -   Once questions are generated, it shows a 10-second countdown before starting the interview.
+    -   Once questions are generated, it shows a countdown before starting the interview.
 
 5.  **Interview (`page: 'interview'`)**
     -   The `InterviewPage.tsx` is the core of the application.

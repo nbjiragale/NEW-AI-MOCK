@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { UserIcon } from '../icons/UserIcon';
 
 const LogoIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -9,7 +8,7 @@ const LogoIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-const Header: React.FC<{ onGetStarted: () => void; onGoToProfile: () => void; }> = ({ onGetStarted, onGoToProfile }) => {
+const Header: React.FC<{ onGetStarted: () => void; }> = ({ onGetStarted }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -50,11 +49,6 @@ const Header: React.FC<{ onGetStarted: () => void; onGoToProfile: () => void; }>
     setIsMenuOpen(false);
   };
 
-  const handleMobileProfile = () => {
-    onGoToProfile();
-    setIsMenuOpen(false);
-  };
-
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled || isMenuOpen ? 'bg-dark/80 backdrop-blur-lg border-b border-slate-800' : 'bg-transparent'}`}>
       <div className="container mx-auto px-6 py-4">
@@ -72,10 +66,7 @@ const Header: React.FC<{ onGetStarted: () => void; onGoToProfile: () => void; }>
           </nav>
           <div className="hidden md:flex items-center gap-4">
             <button onClick={onGetStarted} className="bg-primary text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-500 transition-colors duration-300">
-              Get Started
-            </button>
-            <button onClick={onGoToProfile} className="p-2 text-gray-300 hover:text-primary transition-colors duration-300" aria-label="Open Profile">
-                <UserIcon className="h-6 w-6" />
+                Get Started
             </button>
           </div>
           <button className="md:hidden text-white z-50" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle menu" aria-expanded={isMenuOpen}>
@@ -101,9 +92,7 @@ const Header: React.FC<{ onGetStarted: () => void; onGoToProfile: () => void; }>
                     {link.name}
                   </a>
                 ))}
-                 <button onClick={handleMobileProfile} className="w-full max-w-xs bg-slate-800 text-white font-semibold px-8 py-3 rounded-lg hover:bg-slate-700 transition-colors duration-300 text-lg">
-                    Profile
-                </button>
+                <div className="border-t border-slate-700 w-full max-w-xs my-4"></div>
                 <button onClick={handleMobileGetStarted} className="w-full max-w-xs bg-primary text-white font-semibold px-8 py-3 rounded-lg hover:bg-blue-500 transition-colors duration-300 text-lg">
                     Get Started
                 </button>
