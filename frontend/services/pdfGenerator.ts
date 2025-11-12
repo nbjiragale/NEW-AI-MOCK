@@ -13,12 +13,7 @@ interface ReportData {
     actionableSuggestions: string[];
 }
 
-interface HolisticReport {
-    vocalDelivery: { score: number; feedback: string; };
-    nonVerbalCues: { score: number; feedback: string; };
-}
-
-export const downloadReportAsPdf = (report: ReportData, holisticReport: HolisticReport | null, setupData: any) => {
+export const downloadReportAsPdf = (report: ReportData, setupData: any) => {
     const { jsPDF } = jspdf;
     const doc = new jsPDF({
         orientation: 'p',
@@ -92,40 +87,6 @@ export const downloadReportAsPdf = (report: ReportData, holisticReport: Holistic
         y = addWrappedText(item.feedback, margin, y, {});
         y += 25;
     });
-
-    // --- Holistic Analysis ---
-    if (holisticReport) {
-        if (y > pageHeight - 80) {
-            doc.addPage();
-            y = margin;
-        }
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(16);
-        doc.text('Holistic Communication Analysis', margin, y);
-        y += 20;
-
-        // Vocal Delivery
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(12);
-        doc.text(`Vocal Delivery: ${holisticReport.vocalDelivery.score}/100`, margin, y);
-        y += 18;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        y = addWrappedText(holisticReport.vocalDelivery.feedback, margin, y, {});
-        y += 25;
-
-        // Non-Verbal Cues
-        if (y > pageHeight - 80) { doc.addPage(); y = margin; }
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(12);
-        doc.text(`Non-Verbal Cues: ${holisticReport.nonVerbalCues.score}/100`, margin, y);
-        y += 18;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        y = addWrappedText(holisticReport.nonVerbalCues.feedback, margin, y, {});
-        y += 25;
-    }
-
 
     // --- Actionable Suggestions ---
     if (y > pageHeight - 80) {

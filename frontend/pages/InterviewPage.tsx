@@ -6,8 +6,6 @@ import { MicOff } from '../icons/MicOff';
 import { initiateLiveSession } from '../services/geminiLiveService';
 import { CombinedLiveController } from '../services/combinedLiveController';
 import { validateAnswer } from '../services/geminiForValidation';
-import RealtimeFeedback from '../components/RealtimeFeedback';
-import { RealtimeAnalysisService } from '../services/realtimeAnalysisService';
 
 // Icons
 const PhoneHangUpIcon = () => (
@@ -100,7 +98,7 @@ interface TranscriptItem {
 }
 
 interface InterviewPageProps {
-  onLeave: (transcript: TranscriptItem[], duration: number, frames: string[]) => void;
+  onLeave: (transcript: TranscriptItem[], duration: number) => void;
   setupData: any;
   interviewQuestions: any;
   interviewerDetails: any[];
@@ -136,9 +134,6 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   const animationFrameIdRef = useRef<number | null>(null);
   const isSpeakingRef = useRef(false);
   const startTimeRef = useRef<number | null>(null);
-  const [capturedFrames, setCapturedFrames] = useState<string[]>([]);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const frameCaptureIntervalRef = useRef<number | null>(null);
 
   // State for coding mode
   const [isCodingMode, setIsCodingMode] = useState(false);
@@ -159,51 +154,9 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
       feedback: string;
       hint: string | null;
   } | null>(null);
-  
-  // State for real-time feedback
-  const [paceStatus, setPaceStatus] = useState<'normal' | 'fast'>('normal');
-  const [eyeContactStatus, setEyeContactStatus] = useState<'good' | 'poor'>('good');
-  const analysisServiceRef = useRef<RealtimeAnalysisService | null>(null);
-  const wordCountHistory = useRef<{ timestamp: number; count: number }[]>([]);
-
 
   const hasHandsOnQuestions = handsOnQuestions && handsOnQuestions.length > 0;
   const canShowHandsOnButton = (setupData?.interviewType === 'Technical' || setupData?.interviewType === 'Combined') && hasHandsOnQuestions;
-
-    const calculateWPM = (text: string) => {
-        const now = Date.now();
-        if (!text) return;
-        const currentWordCount = text.trim().split(/\s+/).length;
-
-        wordCountHistory.current.push({ timestamp: now, count: currentWordCount });
-
-        // Keep history for the last 10 seconds
-        const tenSecondsAgo = now - 10000;
-        wordCountHistory.current = wordCountHistory.current.filter(
-            (entry) => entry.timestamp >= tenSecondsAgo
-        );
-
-        if (wordCountHistory.current.length < 2) return;
-
-        const firstEntry = wordCountHistory.current[0];
-        const lastEntry = wordCountHistory.current[wordCountHistory.current.length - 1];
-        
-        const durationInMs = lastEntry.timestamp - firstEntry.timestamp;
-        if (durationInMs < 2000) return; // Not enough time elapsed for a stable reading
-
-        const wordsSpoken = lastEntry.count - firstEntry.count;
-        const durationInMinutes = durationInMs / 60000;
-        
-        if (durationInMinutes <= 0) return;
-
-        const wpm = wordsSpoken / durationInMinutes;
-
-        if (wpm > 180) { // Threshold for speaking too fast
-            setPaceStatus('fast');
-        } else {
-            setPaceStatus('normal');
-        }
-    };
 
   useEffect(() => {
     if (setupData?.type === 'Practice Mode') {
@@ -312,9 +265,6 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                 callbacks: {
                     onTranscriptionUpdate: (item) => {
                         setActiveInterviewerName(item.speaker);
-                        if (item.speaker === 'You') {
-                            calculateWPM(item.text);
-                        }
                         setTranscript(prev => {
                             const newTranscript = [...prev];
                             const lastItem = newTranscript[newTranscript.length - 1];
@@ -379,9 +329,6 @@ ${questionList}
                 stream,
                 systemInstruction,
                 onTranscriptionUpdate: (item) => {
-                    if (item.speaker === 'You') {
-                        calculateWPM(item.text);
-                    }
                     setTranscript(prev => {
                         const newTranscript = [...prev];
                         const lastItem = newTranscript[newTranscript.length - 1];
@@ -431,7 +378,6 @@ ${questionList}
 
     return () => {
       isMounted = false;
-      analysisServiceRef.current?.stop();
       if (animationFrameIdRef.current) {
         cancelAnimationFrame(animationFrameIdRef.current);
       }
@@ -447,47 +393,8 @@ ${questionList}
   useEffect(() => {
     if (streamLoaded && videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
-        // Initialize and start the analysis service here
-        if (videoRef.current && canvasRef.current && !analysisServiceRef.current) {
-            analysisServiceRef.current = new RealtimeAnalysisService(
-                videoRef.current,
-                canvasRef.current,
-                {
-                    onEyeContactChange: (status) => setEyeContactStatus(status),
-                }
-            );
-            analysisServiceRef.current.start();
-        }
     }
   }, [streamLoaded, isCodingMode]);
-
-  useEffect(() => {
-    if (streamLoaded && videoRef.current) {
-        // Start frame capture
-        const videoElement = videoRef.current;
-        const canvasElement = canvasRef.current;
-        if (!canvasElement) return;
-
-        const context = canvasElement.getContext('2d');
-        if (!context) return;
-
-        frameCaptureIntervalRef.current = window.setInterval(() => {
-            if (videoElement.readyState >= 2 && isCameraOn) { // Check if video is ready and camera is on
-                canvasElement.width = videoElement.videoWidth;
-                canvasElement.height = videoElement.videoHeight;
-                context.drawImage(videoElement, 0, 0, videoElement.videoWidth, videoElement.videoHeight);
-                const frame = canvasElement.toDataURL('image/jpeg', 0.5); // 50% quality JPEG
-                setCapturedFrames(prev => [...prev, frame.split(',')[1]]); // Store only base64 part
-            }
-        }, 5000); // Capture a frame every 5 seconds
-    }
-
-    return () => {
-        if (frameCaptureIntervalRef.current) {
-            clearInterval(frameCaptureIntervalRef.current);
-        }
-    };
-  }, [streamLoaded, isCameraOn]);
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -542,7 +449,7 @@ ${questionList}
     sessionManagerRef.current?.close();
     const endTime = Date.now();
     const durationInSeconds = startTimeRef.current ? Math.round((endTime - startTimeRef.current) / 1000) : 0;
-    onLeave(transcript, durationInSeconds, capturedFrames);
+    onLeave(transcript, durationInSeconds);
   };
   
   const handleAskQuestion = (type: Persona) => {
@@ -623,7 +530,6 @@ ${questionList}
 
   return (
     <div className="bg-dark h-screen w-screen flex flex-col text-white font-sans relative">
-      <canvas ref={canvasRef} style={{ display: 'none' }}></canvas>
       {/* ======================================================================
       IMPROVEMENT 1: Unified Header Bar
       ======================================================================
@@ -785,7 +691,6 @@ ${questionList}
                         {isCameraOn && <div className="absolute bottom-2 left-2 text-xs bg-black/40 px-2 py-0.5 rounded">
                           <span className="font-semibold text-white">{setupData?.candidateName || 'User'}</span>
                       </div>}
-                      <RealtimeFeedback paceStatus={paceStatus} eyeContactStatus={eyeContactStatus} />
                   </div>
                   
                   {/* ======================================================================
@@ -822,7 +727,6 @@ ${questionList}
                                   <span className="font-semibold text-white">{setupData?.candidateName || 'User'}</span>
                               </div>
                           )}
-                          <RealtimeFeedback paceStatus={paceStatus} eyeContactStatus={eyeContactStatus} />
                       </div>
 
                       {/* FIX: Wrapped VideoPlaceholder in a div and moved the key to the wrapper to resolve props error. */}
@@ -907,7 +811,6 @@ ${questionList}
                     {isCameraOn && <div className="absolute bottom-3 left-3 text-sm bg-black/30 px-2 py-1 rounded-md">
                       <span className="font-semibold text-amber-500">{setupData?.candidateName || 'UserName'}</span>
                   </div>}
-                  <RealtimeFeedback paceStatus={paceStatus} eyeContactStatus={eyeContactStatus} />
 
                   {/* ======================================================================
                   IMPROVEMENT 2: Removed overlay controls from here

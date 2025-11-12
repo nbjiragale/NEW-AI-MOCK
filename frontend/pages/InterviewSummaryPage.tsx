@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { generateInterviewReport } from '../services/geminiForReportGeneration';
 import { downloadReportAsPdf } from '../services/pdfGenerator';
-import { generateHolisticAnalysis } from '../services/geminiForHolisticAnalysis';
-import { EyeIcon } from '../icons/EyeIcon';
-import { SoundWaveIcon } from '../icons/SoundWaveIcon';
 import DeepDiveModal from '../components/DeepDiveModal';
 import { SearchIcon } from '../icons/SearchIcon';
 import { ClipboardListIcon } from '../icons/ClipboardListIcon';
@@ -70,12 +67,6 @@ interface ReportData {
     actionableSuggestions: string[];
 }
 
-interface HolisticReport {
-    vocalDelivery: { score: number; feedback: string; };
-    nonVerbalCues: { score: number; feedback: string; };
-}
-
-
 interface TranscriptItem {
     speaker: string;
     text: string;
@@ -85,15 +76,12 @@ interface InterviewSummaryPageProps {
     setupData: any;
     transcript: TranscriptItem[] | null;
     interviewDuration: number | null;
-    videoFrames: string[] | null;
     onStartNew: () => void;
 }
 
-const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, transcript, interviewDuration, videoFrames, onStartNew }) => {
+const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, transcript, interviewDuration, onStartNew }) => {
     const [report, setReport] = useState<ReportData | null>(null);
-    const [holisticReport, setHolisticReport] = useState<HolisticReport | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [isHolisticLoading, setIsHolisticLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [deepDiveData, setDeepDiveData] = useState<{ question: string; answer: string } | null>(null);
     
@@ -102,7 +90,6 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
             if (interviewDuration !== null && interviewDuration < 60) {
                 setError("The interview was too short (less than 1 minute) to generate a meaningful performance report. Please try again with a longer session.");
                 setIsLoading(false);
-                setIsHolisticLoading(false);
                 setReport(null);
                 return;
             }
@@ -110,39 +97,25 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
             if (!transcript || transcript.length < 2) {
                 setError("Not enough conversation data was recorded to generate a report.");
                 setIsLoading(false);
-                setIsHolisticLoading(false);
                 return;
             }
             try {
                 setIsLoading(true);
-                setIsHolisticLoading(true);
                 setError(null);
                 
-                const reportPromise = generateInterviewReport(setupData, transcript);
-                const holisticPromise = (videoFrames && videoFrames.length > 0) 
-                    ? generateHolisticAnalysis(transcript, videoFrames) 
-                    : Promise.resolve(null);
-
-                const [generatedReport, generatedHolisticReport] = await Promise.all([reportPromise, holisticPromise]);
+                const generatedReport = await generateInterviewReport(setupData, transcript);
                 
                 setReport(generatedReport);
-                setIsLoading(false);
-
-                if (generatedHolisticReport) {
-                    setHolisticReport(generatedHolisticReport);
-                }
             } catch (e) {
                 setError("Sorry, we couldn't generate your report at this time. Our AI may be experiencing high demand. Please try again later.");
                 console.error(e);
             } finally {
-                // Final loading state update
                 setIsLoading(false);
-                setIsHolisticLoading(false);
             }
         };
 
         fetchReports();
-    }, [setupData, transcript, interviewDuration, videoFrames]);
+    }, [setupData, transcript, interviewDuration]);
     
     const handleDownload = () => {
         if (!report) {
@@ -150,7 +123,7 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
             return;
         }
         try {
-             downloadReportAsPdf(report, holisticReport, setupData);
+             downloadReportAsPdf(report, setupData);
         } catch (err) {
             console.error("Error generating PDF:", err);
             alert("Could not generate PDF. Please try again.");
@@ -221,41 +194,6 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                     </div>
                 ))}
                 
-                {isHolisticLoading ? (
-                    <div className="text-center py-10">
-                        <svg className="animate-spin h-8 w-8 text-primary mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <p className="text-gray-400">Analyzing Body Language & Vocal Tone...</p>
-                    </div>
-                ) : holisticReport && (
-                    <>
-                        <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
-                            <div className="flex justify-between items-center mb-3">
-                                <div className="flex items-center gap-4">
-                                    <SoundWaveIcon className="h-8 w-8 text-blue-400" />
-                                    <h4 className="text-xl font-bold text-white">Vocal Delivery</h4>
-                                </div>
-                                <span className="text-xl font-semibold text-white">{holisticReport.vocalDelivery.score}/100</span>
-                            </div>
-                            <ScoreBar score={holisticReport.vocalDelivery.score} />
-                            <p className="text-gray-300 mt-4">{holisticReport.vocalDelivery.feedback}</p>
-                        </div>
-                        <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
-                            <div className="flex justify-between items-center mb-3">
-                                 <div className="flex items-center gap-4">
-                                    <EyeIcon className="h-8 w-8 text-blue-400" />
-                                    <h4 className="text-xl font-bold text-white">Non-Verbal Cues</h4>
-                                </div>
-                                <span className="text-xl font-semibold text-white">{holisticReport.nonVerbalCues.score}/100</span>
-                            </div>
-                            <ScoreBar score={holisticReport.nonVerbalCues.score} />
-                            <p className="text-gray-300 mt-4">{holisticReport.nonVerbalCues.feedback}</p>
-                        </div>
-                    </>
-                )}
-                
                 <ReportSection icon={<LightbulbIcon />} title="Actionable Suggestions">
                     <ul className="list-disc list-inside space-y-2">
                         {report.actionableSuggestions.map((item, index) => <li key={index}>{item}</li>)}
@@ -302,7 +240,7 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                         {renderContent()}
                     </div>
 
-                    {!(isLoading || isHolisticLoading) && (
+                    {!(isLoading) && (
                         <div className="mt-12 flex flex-col sm:flex-row justify-center gap-4">
                             <button 
                                 onClick={handleDownload}
