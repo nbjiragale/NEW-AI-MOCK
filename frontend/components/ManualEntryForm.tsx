@@ -49,6 +49,19 @@ const FormSelect: React.FC<{ label: string; name: string; children: React.ReactN
     </div>
 );
 
+const FormToggle: React.FC<{ label: string; description: string; name: string; checked: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; }> = ({ label, description, name, checked, onChange }) => (
+    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-800 border border-slate-700">
+        <div>
+            <label htmlFor={name} className="font-medium text-white">{label}</label>
+            <p className="text-sm text-gray-400">{description}</p>
+        </div>
+        <label className="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" name={name} id={name} checked={checked} onChange={onChange} className="sr-only peer" />
+            <div className="w-11 h-6 bg-slate-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+        </label>
+    </div>
+);
+
 interface ManualEntryFormProps {
     initialData?: any;
     onSubmit: (data: any) => void;
@@ -66,6 +79,7 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
     const [topics, setTopics] = useState(initialData?.topics || '');
     const [language, setLanguage] = useState(initialData?.language || '');
     const [targetCompany, setTargetCompany] = useState(initialData?.targetCompany || '');
+    const [needsReport, setNeedsReport] = useState(initialData?.needsReport ?? true);
     const [isGenerating, setIsGenerating] = useState(false);
 
     const languages = [
@@ -86,6 +100,7 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
             topics,
             language,
             targetCompany,
+            needsReport,
         };
         onSubmit(data);
     };
@@ -211,6 +226,14 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
                 )}
 
                 <FormInput label="Target Company" name="targetCompany" type="text" placeholder="e.g., TCS, KPMG, Google" value={targetCompany} onChange={(e) => setTargetCompany(e.target.value)} required/>
+
+                <FormToggle
+                    label="Auto-generate Report"
+                    description="Automatically generate a detailed report after the interview."
+                    name="needsReport"
+                    checked={needsReport}
+                    onChange={(e) => setNeedsReport(e.target.checked)}
+                />
 
                 <div className="pt-4">
                     <button type="submit" className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20">

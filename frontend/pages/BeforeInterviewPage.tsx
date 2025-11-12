@@ -159,9 +159,21 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
             updateLastLog(`I'm tailoring questions for a candidate with ${setupData.experience || 'your specified'} years of experience.`, 'done');
             
             addLog('Generating a personalized set of interview questions...');
-            const questions = setupData?.practiceType === 'By List of Questions'
-              ? { theoryQuestions: setupData.questionList.split('\n').filter((q: string) => q.trim() !== '') }
-              : await generateInterviewQuestions(setupData);
+            
+            let questions;
+            if (setupData?.practiceType === 'By List of Questions') {
+                questions = { 
+                    theoryQuestions: setupData.questionList.split('\n').filter((q: string) => q.trim() !== ''),
+                    handsOnQuestions: []
+                };
+            } else if (setupData?.practiceType === 'Fluency Practice') {
+                questions = {
+                    theoryQuestions: setupData.qaPairs.map((p: any) => p.question),
+                    handsOnQuestions: []
+                };
+            } else {
+                questions = await generateInterviewQuestions(setupData);
+            }
             generatedQuestionsRef.current = questions;
             await delay(2000);
             updateLastLog('The questions are ready.', 'done');

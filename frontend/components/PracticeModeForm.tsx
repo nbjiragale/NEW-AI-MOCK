@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
-type PracticeOption = 'topic' | 'list' | 'confidence';
+type PracticeOption = 'topic' | 'list' | 'confidence' | 'fluency';
 
 const FormInput: React.FC<{ label: string; type: string; placeholder: string; name: string, value: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, required?: boolean }> = ({ label, type, placeholder, name, value, onChange, required = false }) => (
     <div>
@@ -49,6 +49,19 @@ const FormSelect: React.FC<{ label: string; name: string; children: React.ReactN
     </div>
 );
 
+const FormToggle: React.FC<{ label: string; description: string; name: string; checked: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; }> = ({ label, description, name, checked, onChange }) => (
+    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-800 border border-slate-700">
+        <div>
+            <label htmlFor={name} className="font-medium text-white">{label}</label>
+            <p className="text-sm text-gray-400">{description}</p>
+        </div>
+        <label className="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" name={name} id={name} checked={checked} onChange={onChange} className="sr-only peer" />
+            <div className="w-11 h-6 bg-slate-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+        </label>
+    </div>
+);
+
 const confidenceQuestions = [
     "What technical areas or skills do you feel least confident about right now?",
     "Describe a recent interview experience where you felt you could have performed better. What would you change?",
@@ -67,6 +80,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
         if (initialData.practiceType === 'By Topic Name') return 'topic';
         if (initialData.practiceType === 'By List of Questions') return 'list';
         if (initialData.practiceType === 'Build Confidence') return 'confidence';
+        if (initialData.practiceType === 'Fluency Practice') return 'fluency';
         return 'topic';
     };
 
@@ -88,6 +102,24 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
     const [topicName, setTopicName] = useState(initialData?.practiceType === 'By Topic Name' ? initialData.topicName : '');
     const [questionList, setQuestionList] = useState(initialData?.practiceType === 'By List of Questions' ? initialData.questionList : '');
     const [confidenceAnswers, setConfidenceAnswers] = useState<Record<number, string>>(getInitialConfidenceAnswers());
+    const [needsReport, setNeedsReport] = useState(initialData?.needsReport ?? true);
+    
+    const [qaPairs, setQaPairs] = useState(
+        initialData?.practiceType === 'Fluency Practice' ? initialData.qaPairs.map((p: any, i: number) => ({ ...p, id: i + 1 })) : [{ id: 1, question: '', answer: '' }]
+    );
+    const nextId = useRef(qaPairs.length + 2);
+
+    const handleAddQaPair = () => {
+        setQaPairs(prev => [...prev, { id: nextId.current++, question: '', answer: '' }]);
+    };
+
+    const handleRemoveQaPair = (id: number) => {
+        setQaPairs(prev => prev.filter(pair => pair.id !== id));
+    };
+
+    const handleQaChange = (id: number, field: 'question' | 'answer', value: string) => {
+        setQaPairs(prev => prev.map(pair => pair.id === id ? { ...pair, [field]: value } : pair));
+    };
 
     const handleConfidenceChange = (index: number, value: string) => {
         setConfidenceAnswers(prev => ({...prev, [index]: value}));
@@ -103,8 +135,9 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
             case 'list':
                 return !questionList.trim();
             case 'confidence':
-                // Fix: Explicitly type 'answer' as a string to resolve TypeScript inference issue.
                 return Object.values(confidenceAnswers).some((answer: string) => !answer.trim());
+            case 'fluency':
+                return qaPairs.length === 0 || qaPairs.some(pair => !pair.question.trim() || !pair.answer.trim());
             default:
                 return true;
         }
@@ -113,11 +146,19 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         
+        let practiceTypeLabel = 'Build Confidence';
+        switch (practiceOption) {
+            case 'topic': practiceTypeLabel = 'By Topic Name'; break;
+            case 'list': practiceTypeLabel = 'By List of Questions'; break;
+            case 'fluency': practiceTypeLabel = 'Fluency Practice'; break;
+        }
+
         const baseData = {
             candidateName,
             type: 'Practice Mode',
             interviewType,
-            practiceType: practiceOption === 'topic' ? 'By Topic Name' : practiceOption === 'list' ? 'By List of Questions' : 'Build Confidence',
+            practiceType: practiceTypeLabel,
+            needsReport,
         };
 
         let practiceData = {};
@@ -131,6 +172,9 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                 break;
             case 'confidence':
                 practiceData = { confidenceAnswers: Object.entries(confidenceAnswers).map(([key, value]) => ({ question: confidenceQuestions[parseInt(key)], answer: value }))};
+                break;
+            case 'fluency':
+                practiceData = { qaPairs: qaPairs.map(({ question, answer }) => ({ question, answer })) };
                 break;
         }
         
@@ -194,6 +238,42 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                         ))}
                     </div>
                 );
+            case 'fluency':
+                return (
+                    <div className="space-y-6">
+                        <p className="text-sm text-gray-400">Add questions and your ideal answers. The AI coach will help you practice delivering them fluently.</p>
+                        {qaPairs.map((pair, index) => (
+                            <div key={pair.id} className="p-4 bg-slate-900/50 rounded-lg border border-slate-700 relative space-y-4">
+                                {qaPairs.length > 1 && (
+                                    <button type="button" onClick={() => handleRemoveQaPair(pair.id)} className="absolute -top-2 -right-2 w-7 h-7 bg-red-600 rounded-full text-white hover:bg-red-500 transition-colors flex items-center justify-center z-10">
+                                        &times;
+                                    </button>
+                                )}
+                                <FormInput
+                                    label={`Question ${index + 1}`}
+                                    name={`question-${pair.id}`}
+                                    type="text"
+                                    placeholder="e.g., Tell me about yourself."
+                                    value={pair.question}
+                                    onChange={(e) => handleQaChange(pair.id, 'question', e.target.value)}
+                                    required
+                                />
+                                <FormTextarea
+                                    label={`Your Target Answer ${index + 1}`}
+                                    name={`answer-${pair.id}`}
+                                    rows={5}
+                                    placeholder="Write the key points you want to cover..."
+                                    value={pair.answer}
+                                    onChange={(e) => handleQaChange(pair.id, 'answer', e.target.value)}
+                                    required
+                                />
+                            </div>
+                        ))}
+                        <button type="button" onClick={handleAddQaPair} className="w-full text-primary font-semibold py-2 px-4 rounded-lg border-2 border-dashed border-primary/50 hover:bg-primary/10 transition-colors">
+                            + Add Another Question
+                        </button>
+                    </div>
+                );
             default:
                 return null;
         }
@@ -228,12 +308,21 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                         <OptionButton option="topic" label="By Topic Name" />
                         <OptionButton option="list" label="By List of Questions" />
                         <OptionButton option="confidence" label="Build Confidence" />
+                        <OptionButton option="fluency" label="Fluency Practice" />
                     </div>
                 </div>
 
                 <div className="pt-2">
                     {renderFormContent()}
                 </div>
+                
+                <FormToggle
+                    label="Auto-generate Report"
+                    description="Automatically generate a detailed report after the interview."
+                    name="needsReport"
+                    checked={needsReport}
+                    onChange={(e) => setNeedsReport(e.target.checked)}
+                />
 
                 <div className="pt-4">
                     <button type="submit" className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isButtonDisabled()}>

@@ -300,7 +300,31 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
             const intro = `Begin the interview now. First, greet the candidate, ${candidateName}, by name. Then, introduce yourself. Say something like: "Hi ${candidateName}, I'm ${interviewerName}. I'll be interviewing you today. I'm a ${interviewerRole} at ${companyName} and I've been here for about ${experienceYears} years."`;
             
             let systemInstruction;
-            if (allQuestions.length > 0) {
+            
+            if (setupData.type === 'Practice Mode' && setupData.practiceType === 'Fluency Practice') {
+                const qaList = setupData.qaPairs.map((p: any, i: number) => 
+                    `Question ${i + 1}: "${p.question}"\nTarget Answer ${i + 1}: "${p.answer}"`
+                ).join('\n\n');
+
+                systemInstruction = `You are an expert fluency and delivery coach. Your goal is to help a user practice delivering their prepared answers smoothly and confidently. Your tone should be encouraging and positive, like a supportive coach.
+
+Here is the list of questions and the user's target answers:
+${qaList}
+
+**Your Coaching Flow (VERY IMPORTANT):**
+1. Begin by asking the first question from the list. Wait for the user to respond.
+2. Listen carefully to the user's spoken answer.
+3. After they finish, compare their delivery to their target answer.
+4. Provide brief, supportive, and actionable feedback. Focus on these areas:
+    - **Fluency:** Did they speak smoothly, or did they stumble or use many filler words?
+    - **Pace:** Was their speaking pace natural and engaging?
+    - **Confidence:** How did they sound? Confident, hesitant, nervous?
+    - **Closeness to Script:** How well did they remember their key points from their target answer? Reassure them that exact wording isn't important, but covering the main ideas is.
+5. After giving feedback, you can say something encouraging like "That was a solid attempt. Let's move to the next one." and then ask the next question from your list.
+6. If they struggled significantly, you could offer another attempt by saying, "That was a good start. The key points were there, but it felt a little hesitant. Would you like to try that one again?"
+7. Continue this process for all the questions provided. Once done, you can conclude the session by saying "Great work! That's all the questions for this practice session."`;
+
+            } else if (allQuestions.length > 0) {
               const questionList = allQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
               systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${candidateName}. Your goal is to have a natural, helpful, and conversational interview.
 

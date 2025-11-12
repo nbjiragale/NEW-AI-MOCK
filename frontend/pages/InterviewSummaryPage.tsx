@@ -4,6 +4,7 @@ import { downloadReportAsPdf } from '../services/pdfGenerator';
 import DeepDiveModal from '../components/DeepDiveModal';
 import { SearchIcon } from '../icons/SearchIcon';
 import { ClipboardListIcon } from '../icons/ClipboardListIcon';
+import { SparkleIcon } from '../icons/SparkleIcon';
 
 // TypeScript declarations for CDN libraries
 declare var jspdf: any;
@@ -82,15 +83,15 @@ interface InterviewSummaryPageProps {
 const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, transcript, interviewDuration, onStartNew }) => {
     const [report, setReport] = useState<ReportData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [deepDiveData, setDeepDiveData] = useState<{ question: string; answer: string } | null>(null);
     
     useEffect(() => {
-        const fetchReports = async () => {
+        const fetchReport = async () => {
             if (interviewDuration !== null && interviewDuration < 60) {
                 setError("The interview was too short (less than 1 minute) to generate a meaningful performance report. Please try again with a longer session.");
                 setIsLoading(false);
-                setReport(null);
                 return;
             }
 
@@ -99,22 +100,25 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                 setIsLoading(false);
                 return;
             }
-            try {
-                setIsLoading(true);
-                setError(null);
-                
-                const generatedReport = await generateInterviewReport(setupData, transcript);
-                
-                setReport(generatedReport);
-            } catch (e) {
-                setError("Sorry, we couldn't generate your report at this time. Our AI may be experiencing high demand. Please try again later.");
-                console.error(e);
-            } finally {
+            
+            if (setupData?.needsReport) {
+                try {
+                    setError(null);
+                    const generatedReport = await generateInterviewReport(setupData, transcript);
+                    setReport(generatedReport);
+                } catch (e) {
+                    setError("Sorry, we couldn't generate your report at this time. Our AI may be experiencing high demand. Please try again later.");
+                    console.error(e);
+                } finally {
+                    setIsLoading(false);
+                }
+            } else {
+                // Don't auto-generate, just finish loading state
                 setIsLoading(false);
             }
         };
 
-        fetchReports();
+        fetchReport();
     }, [setupData, transcript, interviewDuration]);
     
     const handleDownload = () => {
@@ -127,6 +131,21 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
         } catch (err) {
             console.error("Error generating PDF:", err);
             alert("Could not generate PDF. Please try again.");
+        }
+    };
+
+    const handleManualGenerate = async () => {
+        if (!transcript) return;
+        setIsGenerating(true);
+        setError(null);
+        try {
+            const generatedReport = await generateInterviewReport(setupData, transcript);
+            setReport(generatedReport);
+        } catch (e) {
+            setError("Sorry, we couldn't generate your report at this time. Our AI may be experiencing high demand. Please try again later.");
+            console.error(e);
+        } finally {
+            setIsGenerating(false);
         }
     };
     
@@ -167,62 +186,91 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
             );
         }
 
-        if (!report) {
-             return (
-                <div className="text-center py-20">
-                     <p className="text-gray-400">No report data available.</p>
+        if (report) {
+            return (
+                <div className="space-y-8 animate-fade-in-up">
+                    <div className="text-center p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+                        <h3 className="text-lg font-semibold text-gray-400">Overall Score</h3>
+                        <p className="text-6xl font-bold text-primary my-2">{report.overallScore}<span className="text-3xl text-gray-400">/100</span></p>
+                        <p className="text-gray-300 max-w-2xl mx-auto">{report.overallFeedback}</p>
+                    </div>
+
+                    {report.performanceBreakdown.map((item, index) => (
+                        <div key={index} className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                            <div className="flex justify-between items-center mb-3">
+                                <h4 className="text-xl font-bold text-white">{item.category}</h4>
+                                <span className="text-xl font-semibold text-white">{item.score}/100</span>
+                            </div>
+                            <ScoreBar score={item.score} />
+                            <p className="text-gray-300 mt-4">{item.feedback}</p>
+                        </div>
+                    ))}
+                    
+                    <ReportSection icon={<LightbulbIcon />} title="Actionable Suggestions">
+                        <ul className="list-disc list-inside space-y-2">
+                            {report.actionableSuggestions.map((item, index) => <li key={index}>{item}</li>)}
+                        </ul>
+                    </ReportSection>
+
+                    {transcript && transcript.length > 0 && (
+                        <ReportSection icon={<ClipboardListIcon className="h-8 w-8 text-blue-400" />} title="Interview Transcript">
+                            <div className="space-y-4 max-h-96 overflow-y-auto p-2 bg-slate-900/50 rounded-md">
+                                {transcript.map((item, index) => (
+                                    <div key={index} className="flex flex-col group">
+                                        <div className={`rounded-lg px-3 py-2 max-w-[90%] ${item.speaker === 'You' ? 'bg-blue-600/50 self-end' : 'bg-slate-700/80 self-start'}`}>
+                                            <p className="text-xs font-bold mb-1 text-white">{item.speaker}</p>
+                                            <p className="text-sm text-gray-200">{item.text}</p>
+                                        </div>
+                                        {item.speaker === 'You' && (
+                                            <button 
+                                                onClick={() => handleDeepDiveClick(index)}
+                                                className="mt-1.5 self-end flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-opacity opacity-0 group-hover:opacity-100"
+                                            >
+                                                <SearchIcon className="h-3.5 w-3.5" />
+                                                <span>Deep Dive</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </ReportSection>
+                    )}
+                </div>
+            );
+        }
+        
+        if (!setupData?.needsReport && !report && !isLoading) {
+            return (
+                <div className="text-center py-10">
+                    <h2 className="text-2xl font-bold text-white mb-4">Ready for your feedback?</h2>
+                    <p className="text-gray-400 mb-8">Click the button below to generate your detailed performance report.</p>
+                    <button
+                        onClick={handleManualGenerate}
+                        disabled={isGenerating}
+                        className="flex items-center justify-center w-full sm:w-auto mx-auto bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50"
+                    >
+                        {isGenerating ? (
+                            <>
+                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Generating...
+                            </>
+                        ) : (
+                             <>
+                                <SparkleIcon className="h-5 w-5 mr-2" />
+                                Generate My Report
+                            </>
+                        )}
+                    </button>
                 </div>
             );
         }
 
         return (
-            <div className="space-y-8">
-                <div className="text-center p-6 bg-slate-800/50 rounded-xl border border-slate-700">
-                    <h3 className="text-lg font-semibold text-gray-400">Overall Score</h3>
-                    <p className="text-6xl font-bold text-primary my-2">{report.overallScore}<span className="text-3xl text-gray-400">/100</span></p>
-                    <p className="text-gray-300 max-w-2xl mx-auto">{report.overallFeedback}</p>
-                </div>
-
-                {report.performanceBreakdown.map((item, index) => (
-                    <div key={index} className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
-                        <div className="flex justify-between items-center mb-3">
-                            <h4 className="text-xl font-bold text-white">{item.category}</h4>
-                            <span className="text-xl font-semibold text-white">{item.score}/100</span>
-                        </div>
-                        <ScoreBar score={item.score} />
-                        <p className="text-gray-300 mt-4">{item.feedback}</p>
-                    </div>
-                ))}
-                
-                <ReportSection icon={<LightbulbIcon />} title="Actionable Suggestions">
-                    <ul className="list-disc list-inside space-y-2">
-                        {report.actionableSuggestions.map((item, index) => <li key={index}>{item}</li>)}
-                    </ul>
-                </ReportSection>
-
-                {transcript && transcript.length > 0 && (
-                    <ReportSection icon={<ClipboardListIcon className="h-8 w-8 text-blue-400" />} title="Interview Transcript">
-                        <div className="space-y-4 max-h-96 overflow-y-auto p-2 bg-slate-900/50 rounded-md">
-                            {transcript.map((item, index) => (
-                                <div key={index} className="flex flex-col group">
-                                    <div className={`rounded-lg px-3 py-2 max-w-[90%] ${item.speaker === 'You' ? 'bg-blue-600/50 self-end' : 'bg-slate-700/80 self-start'}`}>
-                                        <p className="text-xs font-bold mb-1 text-white">{item.speaker}</p>
-                                        <p className="text-sm text-gray-200">{item.text}</p>
-                                    </div>
-                                    {item.speaker === 'You' && (
-                                        <button 
-                                            onClick={() => handleDeepDiveClick(index)}
-                                            className="mt-1.5 self-end flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-opacity opacity-0 group-hover:opacity-100"
-                                        >
-                                            <SearchIcon className="h-3.5 w-3.5" />
-                                            <span>Deep Dive</span>
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </ReportSection>
-                )}
+            <div className="text-center py-20">
+                    <p className="text-gray-400">No report data available.</p>
             </div>
         );
     }
@@ -245,7 +293,7 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                             <button 
                                 onClick={handleDownload}
                                 disabled={!report || !!error}
-                                className="flex items-center justify-center w-full sm:w-auto bg-slate-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-600 transition-transform transform hover:scale-105 duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className={`flex items-center justify-center w-full sm:w-auto bg-slate-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-600 transition-transform transform hover:scale-105 duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${!report ? 'hidden' : ''}`}
                             >
                                <DownloadIcon />
                                Download PDF

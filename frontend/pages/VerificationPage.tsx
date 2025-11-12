@@ -8,6 +8,8 @@ import { BarChartIcon } from '../icons/BarChartIcon';
 import { UsersIcon } from '../icons/UsersIcon';
 import { ClipboardListIcon } from '../icons/ClipboardListIcon';
 import { CodeIcon } from '../icons/CodeIcon';
+import { CheckCircleIcon } from '../icons/CheckCircleIcon';
+import { XCircleIcon } from '../icons/XCircleIcon';
 
 interface VerificationPageProps {
     setupData: any;
@@ -87,6 +89,11 @@ const VerificationPage: React.FC<VerificationPageProps> = ({ setupData, onEdit, 
                         <DetailItem icon={<CodeIcon />} label="Coding Language" value={details.language} />
                      </>
                  )}
+                <DetailItem 
+                    icon={details.needsReport ? <CheckCircleIcon className="w-6 h-6" /> : <XCircleIcon className="w-6 h-6" />} 
+                    label="Auto-generate Report" 
+                    value={details.needsReport ? 'Enabled' : 'Disabled'} 
+                />
             </InfoCard>
 
             {details.topics && (
@@ -102,6 +109,11 @@ const VerificationPage: React.FC<VerificationPageProps> = ({ setupData, onEdit, 
             <InfoCard title="Session Settings">
                 <DetailItem icon={<ClipboardListIcon />} label="Interview Type" value={details.interviewType} />
                 <DetailItem icon={<ClipboardListIcon />} label="Practice Type" value={details.practiceType} />
+                <DetailItem 
+                    icon={details.needsReport ? <CheckCircleIcon className="w-6 h-6" /> : <XCircleIcon className="w-6 h-6" />} 
+                    label="Auto-generate Report" 
+                    value={details.needsReport ? 'Enabled' : 'Disabled'} 
+                />
             </InfoCard>
 
             {details.practiceType === 'By Topic Name' && (
@@ -122,6 +134,19 @@ const VerificationPage: React.FC<VerificationPageProps> = ({ setupData, onEdit, 
                         {details.confidenceAnswers.map((item: { question: string; answer: string }, index: number) => (
                             <div key={index} className="border-t border-slate-700 pt-3 first:border-t-0 first:pt-0">
                                 <p className="font-semibold text-gray-300">{item.question}</p>
+                                <p className="mt-1 text-sm text-white italic pl-2 border-l-2 border-primary/50">"{item.answer}"</p>
+                            </div>
+                        ))}
+                    </div>
+                </FullWidthInfo>
+            )}
+
+            {details.practiceType === 'Fluency Practice' && (
+                <FullWidthInfo icon={<FileTextIcon className="w-6 h-6"/>} label="Your Q&A for Fluency Practice">
+                    <div className="space-y-4">
+                        {details.qaPairs.map((item: { question: string; answer: string }, index: number) => (
+                            <div key={index} className="border-t border-slate-700 pt-3 first:border-t-0 first:pt-0">
+                                <p className="font-semibold text-gray-300">{index + 1}. {item.question}</p>
                                 <p className="mt-1 text-sm text-white italic pl-2 border-l-2 border-primary/50">"{item.answer}"</p>
                             </div>
                         ))}
