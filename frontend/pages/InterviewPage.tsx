@@ -111,6 +111,7 @@ type Persona = 'technical' | 'behavioral' | 'hr';
 const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, interviewQuestions, interviewerDetails }) => {
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isMicOn, setIsMicOn] = useState(true);
+  const [userMicIntent, setUserMicIntent] = useState(true);
   
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const transcriptIdCounter = useRef(0);
@@ -161,6 +162,17 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   const hasHandsOnQuestions = handsOnQuestions && handsOnQuestions.length > 0;
   const canShowHandsOnButton = (setupData?.interviewType === 'Technical' || setupData?.interviewType === 'Combined') && hasHandsOnQuestions;
 
+    const setMicState = useCallback((enabled: boolean) => {
+        if (streamRef.current) {
+            const audioTrack = streamRef.current.getAudioTracks()[0];
+            // Only change if the desired state is different from the current track state
+            if (audioTrack && audioTrack.enabled !== enabled) {
+                audioTrack.enabled = enabled;
+                setIsMicOn(enabled);
+            }
+        }
+    }, []);
+
   const onTranscriptionUpdate = useCallback((newItem: { speaker: string, text: string }) => {
     setTranscript(prev => {
         const lastItem = prev[prev.length - 1];
@@ -174,6 +186,18 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
         }
     });
   }, []);
+  
+    useEffect(() => {
+        // We only want to automatically control the mic if the user's intent is to have it on.
+        // If they manually muted, we respect that and don't turn it back on for them.
+        if (userMicIntent) {
+            if (isAiSpeaking) {
+                setMicState(false); // Mute user mic when AI is talking
+            } else {
+                setMicState(true); // Unmute user mic when AI is done
+            }
+        }
+    }, [isAiSpeaking, userMicIntent, setMicState]);
 
   useEffect(() => {
     if (setupData?.type === 'Practice Mode') {
@@ -203,13 +227,8 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
     if (timeLeft <= 0) {
       setIsTimeUp(true);
       // Mute user mic when time is up, before they decide to ask questions
-      if (streamRef.current) {
-        const audioTrack = streamRef.current.getAudioTracks()[0];
-        if (audioTrack) {
-          audioTrack.enabled = false;
-          setIsMicOn(false);
-        }
-      }
+      setUserMicIntent(false);
+      setMicState(false);
       return;
     }
 
@@ -218,7 +237,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [timeLeft, isTimeUp, isTimerEnabled]);
+  }, [timeLeft, isTimeUp, isTimerEnabled, setMicState]);
 
   const formatTime = (seconds: number) => {
     if (seconds < 0) seconds = 0;
@@ -463,13 +482,11 @@ ${questionList}
   };
 
   const toggleMic = () => {
-    if (streamRef.current) {
-      const audioTrack = streamRef.current.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !isMicOn;
-        setIsMicOn(!isMicOn);
-      }
-    }
+    const newIntent = !userMicIntent;
+    setUserMicIntent(newIntent);
+    // When the user manually toggles, their intent directly sets the mic state.
+    // The automatic control will be paused if they turn it off.
+    setMicState(newIntent);
   };
 
   const handleLeaveCall = () => {
@@ -495,13 +512,8 @@ ${questionList}
     setInQnaMode(true);
     sessionManagerRef.current?.askForCandidateQuestions?.();
     // Re-enable mic so user can ask their question
-    if (streamRef.current) {
-        const audioTrack = streamRef.current.getAudioTracks()[0];
-        if (audioTrack) {
-            audioTrack.enabled = true;
-            setIsMicOn(true);
-        }
-    }
+    setUserMicIntent(true);
+    setMicState(true);
   };
 
   const getTranscriptStatus = () => {
