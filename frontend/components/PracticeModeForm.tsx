@@ -107,6 +107,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
     const [questionList, setQuestionList] = useState(initialData?.practiceType === 'By List of Questions' ? initialData.questionList : '');
     const [confidenceAnswers, setConfidenceAnswers] = useState<Record<number, string>>(getInitialConfidenceAnswers());
     const [needsReport, setNeedsReport] = useState(initialData?.needsReport ?? true);
+    const [recordSession, setRecordSession] = useState(initialData?.recordSession ?? true);
     
     const [qaPairs, setQaPairs] = useState(
         initialData?.practiceType === 'Fluency Practice' ? initialData.qaPairs.map((p: any, i: number) => ({ ...p, id: i + 1 })) : [{ id: 1, question: '', answer: '' }]
@@ -163,6 +164,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
             interviewType,
             practiceType: practiceTypeLabel,
             needsReport,
+            recordSession,
         };
 
         let practiceData = {};
@@ -216,27 +218,25 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                 value={option}
                 checked={practiceOption === option}
                 onChange={() => setPracticeOption(option)}
-                className="sr-only"
+                className="sr-only peer"
             />
-            <div className={`flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-lg transition-colors ${practiceOption === option ? 'bg-primary text-white' : 'bg-slate-700 text-primary'}`}>
-                {icon}
-            </div>
+            <div className="text-primary">{icon}</div>
             <div>
-                <h4 className="font-bold text-white text-base">{title}</h4>
+                <h4 className="font-semibold text-white">{title}</h4>
                 <p className="text-sm text-gray-400">{description}</p>
             </div>
         </label>
     );
 
-    const renderFormContent = () => {
+    const renderContent = () => {
         switch (practiceOption) {
             case 'topic':
                 return (
                     <FormInput
-                        label="Topic Name(s)"
+                        label="Topic Name"
                         name="topicName"
                         type="text"
-                        placeholder="e.g., React Hooks, JavaScript Promises, System Design..."
+                        placeholder="e.g., React Hooks, SQL Joins"
                         value={topicName}
                         onChange={(e) => setTopicName(e.target.value)}
                         required
@@ -245,10 +245,10 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
             case 'list':
                 return (
                     <FormTextarea
-                        label="List of Questions"
+                        label="Your Question List"
                         name="questionList"
-                        rows={8}
-                        placeholder="Paste your questions here, one per line."
+                        placeholder="Paste one question per line..."
+                        rows={6}
                         value={questionList}
                         onChange={(e) => setQuestionList(e.target.value)}
                         required
@@ -257,14 +257,14 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
             case 'confidence':
                 return (
                     <div className="space-y-6">
+                        <p className="text-gray-300">Answer these questions honestly to help the AI tailor the session to build your confidence.</p>
                         {confidenceQuestions.map((q, index) => (
-                             <FormTextarea
+                            <FormTextarea
                                 key={index}
-                                label={`Question ${index + 1}: ${q}`}
-                                name={`confidence-${index}`}
-                                rows={3}
-                                placeholder="Your thoughts here..."
-                                value={confidenceAnswers[index]}
+                                label={q}
+                                name={`confidence-answer-${index}`}
+                                placeholder="Your reflection here..."
+                                value={confidenceAnswers[index] || ''}
                                 onChange={(e) => handleConfidenceChange(index, e.target.value)}
                                 required
                             />
@@ -272,71 +272,72 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                     </div>
                 );
             case 'fluency':
-                return (
+                 return (
                     <div className="space-y-6">
-                        <p className="text-sm text-gray-400">Add questions and your ideal answers. The AI coach will help you practice delivering them fluently.</p>
+                        <p className="text-gray-300">Enter the questions and your ideal answers. The AI will coach you on delivering them fluently.</p>
                         {qaPairs.map((pair, index) => (
-                            <div key={pair.id} className="p-4 bg-slate-900/50 rounded-lg border border-slate-700 relative space-y-4">
+                            <div key={pair.id} className="p-4 bg-slate-800/50 rounded-lg border border-slate-700 relative">
                                 {qaPairs.length > 1 && (
-                                    <button type="button" onClick={() => handleRemoveQaPair(pair.id)} className="absolute -top-3 -right-3 w-7 h-7 bg-red-600 rounded-full text-white hover:bg-red-500 transition-colors flex items-center justify-center z-10 text-xl font-bold leading-none pb-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveQaPair(pair.id)}
+                                        className="absolute top-2 right-2 text-gray-500 hover:text-red-400"
+                                        aria-label="Remove Q&A pair"
+                                    >
                                         &times;
                                     </button>
                                 )}
-                                <FormInput
-                                    label={`Question ${index + 1}`}
-                                    name={`question-${pair.id}`}
-                                    type="text"
-                                    placeholder="e.g., Tell me about yourself."
-                                    value={pair.question}
-                                    onChange={(e) => handleQaChange(pair.id, 'question', e.target.value)}
-                                    required
-                                />
-                                <FormTextarea
-                                    label={`Your Target Answer ${index + 1}`}
-                                    name={`answer-${pair.id}`}
-                                    rows={5}
-                                    placeholder="Write the key points you want to cover..."
-                                    value={pair.answer}
-                                    onChange={(e) => handleQaChange(pair.id, 'answer', e.target.value)}
-                                    required
-                                />
+                                <div className="space-y-4">
+                                    <FormInput
+                                        label={`Question ${index + 1}`}
+                                        name={`q-${pair.id}`}
+                                        type="text"
+                                        placeholder="Enter the question"
+                                        value={pair.question}
+                                        onChange={(e) => handleQaChange(pair.id, 'question', e.target.value)}
+                                        required
+                                    />
+                                    <FormTextarea
+                                        label={`Your Ideal Answer ${index + 1}`}
+                                        name={`a-${pair.id}`}
+                                        placeholder="Write the answer you want to practice"
+                                        value={pair.answer}
+                                        onChange={(e) => handleQaChange(pair.id, 'answer', e.target.value)}
+                                        required
+                                    />
+                                </div>
                             </div>
                         ))}
-                        <button type="button" onClick={handleAddQaPair} className="w-full text-primary font-semibold py-2 px-4 rounded-lg border-2 border-dashed border-primary/50 hover:bg-primary/10 transition-colors">
-                            + Add Another Question
+                        <button
+                            type="button"
+                            onClick={handleAddQaPair}
+                            className="w-full text-center py-2 border-2 border-dashed border-slate-600 rounded-lg text-gray-400 hover:border-primary hover:text-primary transition"
+                        >
+                            + Add Another Q&A Pair
                         </button>
                     </div>
                 );
             default:
                 return null;
         }
-    }
-
+    };
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            <FormInput
-                label="Your Name"
-                name="candidateName"
-                type="text"
-                placeholder="e.g., Jane Doe"
-                value={candidateName}
-                onChange={(e) => setCandidateName(e.target.value)}
-                required
-            />
-            <FormSelect 
-                label="Interview Type" 
-                name="interviewType" 
-                value={interviewType} 
-                onChange={(e) => setInterviewType(e.target.value)}
-            >
-                <option>Technical</option>
-                <option>Behavioral/Managerial</option>
-                <option>HR</option>
-                <option>Combined</option>
-            </FormSelect>
+        <form onSubmit={handleSubmit} className="space-y-10">
             <div>
-                <label className="block mb-3 text-base font-medium text-gray-300">Choose Practice Type</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormInput
+                    label="Your Name"
+                    name="candidateName"
+                    type="text"
+                    placeholder="e.g., John Smith"
+                    value={candidateName}
+                    onChange={(e) => setCandidateName(e.target.value)}
+                    required
+                />
+            </div>
+
+            <div>
+                <label className="block mb-4 text-base font-medium text-gray-300">Choose Your Practice Mode</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {practiceOptionsConfig.map(opt => (
                         <OptionCard
                             key={opt.id}
@@ -348,24 +349,42 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                     ))}
                 </div>
             </div>
-
-            <div className="pt-4 border-t border-slate-700/50">
-                <div className="animate-fade-in-up" style={{ animationDuration: '0.5s' }} key={practiceOption}>
-                    {renderFormContent()}
-                </div>
+            
+            <div key={practiceOption} className="animate-fade-in-up" style={{ animationDuration: '0.5s' }}>
+                {renderContent()}
             </div>
             
-            <FormToggle
-                label="Generate Performance Report"
-                description="Receive a detailed feedback report after your interview."
-                name="needsReport"
-                checked={needsReport}
-                onChange={(e) => setNeedsReport(e.target.checked)}
-            />
+             <div>
+                 <FormSelect label="Focus Area" name="interviewType" value={interviewType} onChange={(e) => setInterviewType(e.target.value)}>
+                    <option>Technical</option>
+                    <option>Behavioral/Managerial</option>
+                    <option>HR</option>
+                </FormSelect>
+             </div>
+
+            <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-primary border-b border-slate-700 pb-3 mb-6">Preferences</h3>
+                <div className="space-y-4">
+                    <FormToggle
+                        label="Generate Performance Report"
+                        description="Receive a detailed feedback report after your interview."
+                        name="needsReport"
+                        checked={needsReport}
+                        onChange={(e) => setNeedsReport(e.target.checked)}
+                    />
+                    <FormToggle
+                        label="Record Interview Session"
+                        description="Enable camera recording for feedback on body language and non-verbal cues."
+                        name="recordSession"
+                        checked={recordSession}
+                        onChange={(e) => setRecordSession(e.target.checked)}
+                    />
+                </div>
+            </div>
 
             <div className="pt-4">
-                <button type="submit" className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isButtonDisabled()}>
-                    Start Practice Session
+                <button type="submit" disabled={isButtonDisabled()} className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Confirm & Proceed
                 </button>
             </div>
         </form>

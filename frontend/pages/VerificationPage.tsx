@@ -94,6 +94,11 @@ const VerificationPage: React.FC<VerificationPageProps> = ({ setupData, onEdit, 
                     label="Auto-generate Report" 
                     value={details.needsReport ? 'Enabled' : 'Disabled'} 
                 />
+                 <DetailItem 
+                    icon={details.recordSession ? <CheckCircleIcon className="w-6 h-6" /> : <XCircleIcon className="w-6 h-6" />} 
+                    label="Record Session" 
+                    value={details.recordSession ? 'Enabled' : 'Disabled'} 
+                />
             </InfoCard>
 
             {details.topics && (
@@ -113,6 +118,11 @@ const VerificationPage: React.FC<VerificationPageProps> = ({ setupData, onEdit, 
                     icon={details.needsReport ? <CheckCircleIcon className="w-6 h-6" /> : <XCircleIcon className="w-6 h-6" />} 
                     label="Auto-generate Report" 
                     value={details.needsReport ? 'Enabled' : 'Disabled'} 
+                />
+                 <DetailItem 
+                    icon={details.recordSession ? <CheckCircleIcon className="w-6 h-6" /> : <XCircleIcon className="w-6 h-6" />} 
+                    label="Record Session" 
+                    value={details.recordSession ? 'Enabled' : 'Disabled'} 
                 />
             </InfoCard>
 

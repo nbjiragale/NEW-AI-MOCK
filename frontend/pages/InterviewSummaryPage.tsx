@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { generateInterviewReport } from '../services/geminiForReportGeneration';
+import { generateHolisticAnalysis } from '../services/geminiForHolisticAnalysis';
 import { downloadReportAsPdf } from '../services/pdfGenerator';
 import DeepDiveModal from '../components/DeepDiveModal';
 import { SearchIcon } from '../icons/SearchIcon';
 import { ClipboardListIcon } from '../icons/ClipboardListIcon';
 import { SparkleIcon } from '../icons/SparkleIcon';
+import { EyeIcon } from '../icons/EyeIcon';
+import { SoundWaveIcon } from '../icons/SoundWaveIcon';
 import { ReportData } from '../types';
 
 // TypeScript declarations for CDN libraries
@@ -62,19 +65,35 @@ interface TranscriptItem {
     text: string;
 }
 
+interface HolisticAnalysisData {
+    vocalDelivery: {
+        score: number;
+        feedback: string;
+    };
+    nonVerbalCues: {
+        score: number;
+        feedback: string;
+    };
+}
+
 interface InterviewSummaryPageProps {
     onStartNew: () => void;
     setupData?: any;
     transcript?: TranscriptItem[] | null;
     interviewDuration?: number | null;
+    recordedVideoFrames?: string[] | null;
 }
 
-const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, transcript, interviewDuration, onStartNew }) => {
+const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, transcript, interviewDuration, recordedVideoFrames, onStartNew }) => {
     const [report, setReport] = useState<ReportData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [deepDiveData, setDeepDiveData] = useState<{ question: string; answer: string } | null>(null);
+    
+    const [holisticAnalysis, setHolisticAnalysis] = useState<HolisticAnalysisData | null>(null);
+    const [isHolisticLoading, setIsHolisticLoading] = useState(false);
+    const [holisticError, setHolisticError] = useState<string | null>(null);
 
     useEffect(() => {
         const processInterview = async () => {
@@ -105,6 +124,28 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
 
         processInterview();
     }, [setupData, transcript, interviewDuration]);
+
+    useEffect(() => {
+        const processHolisticAnalysis = async () => {
+            if (setupData?.recordSession && recordedVideoFrames && recordedVideoFrames.length > 5 && transcript && transcript.length > 2) {
+                setIsHolisticLoading(true);
+                setHolisticError(null);
+                try {
+                    const analysis = await generateHolisticAnalysis(transcript, recordedVideoFrames);
+                    setHolisticAnalysis(analysis);
+                } catch (e) {
+                    console.error("Failed to generate holistic analysis:", e);
+                    setHolisticError("Could not generate body language and vocal feedback.");
+                } finally {
+                    setIsHolisticLoading(false);
+                }
+            }
+        };
+
+        if (!isLoading) {
+             processHolisticAnalysis();
+        }
+    }, [setupData, transcript, recordedVideoFrames, isLoading]);
     
     const handleDownload = () => {
         if (!report) {
@@ -147,6 +188,45 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
             });
         }
     };
+
+    const renderHolisticAnalysis = () => {
+        if (!setupData?.recordSession) return null;
+
+        if (isHolisticLoading) {
+            return <div className="text-center text-gray-400 p-4">Analyzing body language and vocal tone...</div>;
+        }
+        if (holisticError) {
+            return (
+                <ReportSection icon={<EyeIcon className="h-8 w-8 text-red-400" />} title="Holistic Analysis">
+                    <p className="text-red-400">{holisticError}</p>
+                </ReportSection>
+            );
+        }
+        if (!holisticAnalysis) return null;
+
+        return (
+            <ReportSection icon={<EyeIcon className="h-8 w-8 text-blue-400" />} title="Holistic Analysis">
+                <div className="space-y-6">
+                    <div>
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-xl font-bold text-white flex items-center gap-2"><SoundWaveIcon className="h-5 w-5" /> Vocal Delivery</h4>
+                            <span className="text-xl font-semibold text-white">{holisticAnalysis.vocalDelivery.score}/100</span>
+                        </div>
+                        <ScoreBar score={holisticAnalysis.vocalDelivery.score} />
+                        <p className="text-gray-300 mt-4">{holisticAnalysis.vocalDelivery.feedback}</p>
+                    </div>
+                    <div>
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-xl font-bold text-white flex items-center gap-2"><EyeIcon className="h-5 w-5" /> Non-Verbal Cues</h4>
+                            <span className="text-xl font-semibold text-white">{holisticAnalysis.nonVerbalCues.score}/100</span>
+                        </div>
+                        <ScoreBar score={holisticAnalysis.nonVerbalCues.score} />
+                        <p className="text-gray-300 mt-4">{holisticAnalysis.nonVerbalCues.feedback}</p>
+                    </div>
+                </div>
+            </ReportSection>
+        );
+    }
 
     const renderContent = () => {
         if (isLoading) {
@@ -196,6 +276,8 @@ const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, 
                                 </div>
                             ))}
                             
+                            {renderHolisticAnalysis()}
+
                             <ReportSection icon={<LightbulbIcon />} title="Actionable Suggestions">
                                 <ul className="list-disc list-inside space-y-2">
                                     {report.actionableSuggestions.map((item, index) => <li key={index}>{item}</li>)}

@@ -85,6 +85,7 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
     const [language, setLanguage] = useState(initialData?.language || '');
     const [targetCompany, setTargetCompany] = useState(initialData?.targetCompany || '');
     const [needsReport, setNeedsReport] = useState(initialData?.needsReport ?? true);
+    const [recordSession, setRecordSession] = useState(initialData?.recordSession ?? true);
     const [isGenerating, setIsGenerating] = useState(false);
 
     const languages = [
@@ -106,6 +107,7 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
             language,
             targetCompany,
             needsReport,
+            recordSession,
         };
         onSubmit(data);
     };
@@ -212,13 +214,22 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
             )}
             
             <FormSection title="Preferences">
-                <FormToggle
-                    label="Generate Performance Report"
-                    description="Receive a detailed feedback report after your interview."
-                    name="needsReport"
-                    checked={needsReport}
-                    onChange={(e) => setNeedsReport(e.target.checked)}
-                />
+                <div className="space-y-4">
+                    <FormToggle
+                        label="Generate Performance Report"
+                        description="Receive a detailed feedback report after your interview."
+                        name="needsReport"
+                        checked={needsReport}
+                        onChange={(e) => setNeedsReport(e.target.checked)}
+                    />
+                    <FormToggle
+                        label="Record Interview Session"
+                        description="Enable camera recording for feedback on body language and non-verbal cues."
+                        name="recordSession"
+                        checked={recordSession}
+                        onChange={(e) => setRecordSession(e.target.checked)}
+                    />
+                </div>
             </FormSection>
 
             <div className="pt-4">

@@ -21,6 +21,7 @@ const App: React.FC = () => {
   const [interviewerDetails, setInterviewerDetails] = useState<any>(null);
   const [interviewTranscript, setInterviewTranscript] = useState<any[] | null>(null);
   const [interviewDuration, setInterviewDuration] = useState<number | null>(null);
+  const [recordedVideoFrames, setRecordedVideoFrames] = useState<string[] | null>(null);
 
 
   useEffect(() => {
@@ -33,6 +34,7 @@ const App: React.FC = () => {
       setInterviewerDetails(null);
       setInterviewTranscript(null);
       setInterviewDuration(null);
+      setRecordedVideoFrames(null);
   }
 
   const goToSetup = () => {
@@ -61,9 +63,10 @@ const App: React.FC = () => {
     setPage('interview');
   }
 
-  const goToSummary = (transcript: any[], duration: number) => {
+  const goToSummary = (transcript: any[], duration: number, frames: string[]) => {
     setInterviewTranscript(transcript);
     setInterviewDuration(duration);
+    setRecordedVideoFrames(frames);
     setPage('summary');
   }
 
@@ -115,7 +118,7 @@ const App: React.FC = () => {
           setupData={setupData} 
           interviewQuestions={interviewQuestions} 
           interviewerDetails={interviewerDetails}
-          onLeave={(transcript, duration) => goToSummary(transcript, duration)} 
+          onLeave={(transcript, duration, frames) => goToSummary(transcript, duration, frames)} 
         />
     );
   }
@@ -128,6 +131,7 @@ const App: React.FC = () => {
             setupData={setupData}
             transcript={interviewTranscript}
             interviewDuration={interviewDuration}
+            recordedVideoFrames={recordedVideoFrames}
             onStartNew={startNewInterview}
           />
         </main>

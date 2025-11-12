@@ -64,6 +64,7 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
     const [initialFile, setInitialFile] = useState(initialData ? { name: initialData.fileName, size: initialData.fileSize } : null);
     const [interviewType, setInterviewType] = useState(initialData?.interviewType || 'Technical');
     const [needsReport, setNeedsReport] = useState(initialData?.needsReport ?? true);
+    const [recordSession, setRecordSession] = useState(initialData?.recordSession ?? true);
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('Analyzing Resume...');
 
@@ -143,6 +144,7 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
                 fileSize: `${(fileToProcess.size / 1024).toFixed(2)} KB`,
                 ...otherData,
                 needsReport,
+                recordSession,
                 candidateName: analysisResult.candidateName,
                 experience: analysisResult.yearsOfExperience,
                 role: analysisResult.role,
@@ -262,25 +264,34 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
                 </FormSection>
                 
                 <FormSection title="Preferences">
-                    <FormInput label="Target Company (Optional)" name="targetCompany" type="text" placeholder="e.g., TCS, Google, KPMG" defaultValue={initialData?.targetCompany}/>
-                     {(interviewType === 'Technical' || interviewType === 'Combined') && (
-                         <>
-                            <FormInput label="Additional Topics (Optional)" name="topics" type="text" placeholder="e.g., System Design, Behavioral" defaultValue={initialData?.topics}/>
-                            <FormSelect label="Coding Language Preference" name="language" defaultValue={initialData?.language}>
-                                <option value="">Select a language (if applicable)</option>
-                                {languages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
-                                <option value="Not Applicable">Not applicable</option>
-                                <option value="Other">Other</option>
-                            </FormSelect>
-                        </>
-                     )}
-                    <FormToggle
-                        label="Generate Performance Report"
-                        description="Receive a detailed feedback report after your interview."
-                        name="needsReport"
-                        checked={needsReport}
-                        onChange={(e) => setNeedsReport(e.target.checked)}
-                    />
+                    <div className="space-y-4">
+                        <FormInput label="Target Company (Optional)" name="targetCompany" type="text" placeholder="e.g., TCS, Google, KPMG" defaultValue={initialData?.targetCompany}/>
+                         {(interviewType === 'Technical' || interviewType === 'Combined') && (
+                             <>
+                                <FormInput label="Additional Topics (Optional)" name="topics" type="text" placeholder="e.g., System Design, Behavioral" defaultValue={initialData?.topics}/>
+                                <FormSelect label="Coding Language Preference" name="language" defaultValue={initialData?.language}>
+                                    <option value="">Select a language (if applicable)</option>
+                                    {languages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
+                                    <option value="Not Applicable">Not applicable</option>
+                                    <option value="Other">Other</option>
+                                </FormSelect>
+                            </>
+                         )}
+                        <FormToggle
+                            label="Generate Performance Report"
+                            description="Receive a detailed feedback report after your interview."
+                            name="needsReport"
+                            checked={needsReport}
+                            onChange={(e) => setNeedsReport(e.target.checked)}
+                        />
+                         <FormToggle
+                            label="Record Interview Session"
+                            description="Enable camera recording for feedback on body language and non-verbal cues."
+                            name="recordSession"
+                            checked={recordSession}
+                            onChange={(e) => setRecordSession(e.target.checked)}
+                        />
+                    </div>
                 </FormSection>
 
                 <div className="pt-4">
