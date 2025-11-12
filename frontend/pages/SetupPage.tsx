@@ -58,16 +58,16 @@ const SetupPage: React.FC<SetupPageProps> = ({ initialData, onStart }) => {
     <section className="min-h-screen py-16 md:py-24 bg-dark relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-slate-800/[0.1] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
         <div className="container mx-auto px-6 relative z-10">
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-5xl mx-auto">
                 <div className="text-center mb-12">
                     <div className="flex justify-center items-center gap-3">
                         <SettingsIcon className="h-8 w-8 text-primary" />
                         <h1 className="text-4xl md:text-5xl font-extrabold text-white">Interview Setup</h1>
                     </div>
-                    <p className="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">Choose your preferred method to configure the mock interview session.</p>
+                    <p className="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">Configure your mock interview session. Your settings are not saved after you leave.</p>
                 </div>
 
-                <div className="bg-slate-900/50 border border-slate-700 rounded-xl shadow-2xl shadow-black/20 backdrop-blur-lg">
+                <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl shadow-black/20 backdrop-blur-lg">
                     <div className="p-2">
                         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 bg-slate-800/60 p-1.5 rounded-xl">
                             <TabButton tabName="manual" label="Manual Entry" icon={<PencilIcon className="h-5 w-5" />} />
@@ -75,7 +75,9 @@ const SetupPage: React.FC<SetupPageProps> = ({ initialData, onStart }) => {
                             <TabButton tabName="practice" label="Practice Mode" icon={<TargetIcon className="h-5 w-5" />} />
                         </div>
                     </div>
-                    {renderTabContent()}
+                    <div className="p-4 md:p-8">
+                        {renderTabContent()}
+                    </div>
                 </div>
             </div>
         </div>

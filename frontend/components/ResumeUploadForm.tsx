@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { analyzeResume } from '../services/geminiForResumeAnalysis';
+import { FileTextIcon } from '../icons/FileTextIcon';
 
 const FormSelect: React.FC<{ label: string; name: string; children: React.ReactNode; defaultValue?: string; value?: string; onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void }> = ({ label, name, children, defaultValue, value, onChange }) => (
     <div>
@@ -41,6 +42,13 @@ const FormToggle: React.FC<{ label: string; description: string; name: string; c
             <input type="checkbox" name={name} id={name} checked={checked} onChange={onChange} className="sr-only peer" />
             <div className="w-11 h-6 bg-slate-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
         </label>
+    </div>
+);
+
+const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div className="space-y-6">
+        <h3 className="text-lg font-semibold text-primary border-b border-slate-700 pb-3 mb-6">{title}</h3>
+        {children}
     </div>
 );
 
@@ -105,17 +113,23 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
         e.preventDefault();
         const form = e.currentTarget;
 
-        if (!file) {
+        if (!file && !initialFile) {
             alert("Please upload a resume file to analyze.");
             return;
+        }
+
+        const fileToProcess = file || (initialFile ? null : null); // Logic to re-upload can be handled here if needed
+
+        if (!fileToProcess) {
+             alert("Please re-upload your resume to proceed.");
+             return;
         }
 
         setIsLoading(true);
 
         try {
-            // Analyze the resume with Gemini
-            setLoadingMessage('Analyzing resume...');
-            const analysisResult = await analyzeResume(file);
+            setLoadingMessage('Analyzing your resume...');
+            const analysisResult = await analyzeResume(fileToProcess);
             
             const formData = new FormData(form);
             const otherData = Object.fromEntries(formData.entries());
@@ -125,8 +139,8 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
 
             const combinedData = {
                 type: 'By Resume',
-                fileName: file.name,
-                fileSize: `${(file.size / 1024).toFixed(2)} KB`,
+                fileName: fileToProcess.name,
+                fileSize: `${(fileToProcess.size / 1024).toFixed(2)} KB`,
                 ...otherData,
                 needsReport,
                 candidateName: analysisResult.candidateName,
@@ -149,7 +163,7 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
     const canSubmit = !!file;
 
     return (
-        <div className="relative p-6 md:p-8">
+        <div className="relative">
             {isLoading && (
                 <div className="absolute inset-0 bg-dark/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-lg">
                     <svg className="animate-spin h-8 w-8 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -157,45 +171,48 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     <p className="text-white text-lg font-semibold">{loadingMessage}</p>
-                    <p className="text-gray-400">Please wait, this may take a moment.</p>
+                    <p className="text-gray-400">AI is extracting your profile details...</p>
                 </div>
             )}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-10">
                 <div>
-                    <label className="block mb-2 text-base font-medium text-gray-300">Upload Resume</label>
-                    <div
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                        onClick={triggerFileSelect}
-                        className={`flex justify-center items-center w-full h-48 px-6 transition bg-slate-800 border-2 border-slate-700 border-dashed rounded-lg cursor-pointer hover:border-primary ${isDragging ? 'border-primary' : ''}`}
-                    >
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            className="hidden"
-                            accept=".pdf,.doc,.docx,.txt"
-                            onChange={handleFileChange}
-                            disabled={isLoading}
-                        />
-                        {displayFile ? (
-                             <div className="text-center">
-                                 <svg xmlns="http://www.w3.org/2000/svg" className={`mx-auto h-10 w-10 ${file ? 'text-green-500' : 'text-primary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                 </svg>
-                                 <p className="mt-2 text-base text-white">{displayFile.name}</p>
-                                 <p className="text-sm text-gray-400">({typeof displayFile.size === 'number' ? (displayFile.size / 1024).toFixed(2) + ' KB' : displayFile.size})</p>
-                                 {initialFile && !file && <p className="text-sm text-yellow-400 mt-2">Please re-upload this file to continue.</p>}
-                                 <button
-                                     type="button"
-                                     onClick={(e) => { e.stopPropagation(); removeFile(); }}
-                                     className="mt-2 text-sm text-red-500 hover:text-red-400"
-                                     disabled={isLoading}
-                                 >
-                                     Remove file
-                                 </button>
-                             </div>
-                        ) : (
+                    <label className="block mb-2 text-base font-medium text-gray-300">Upload Your Resume</label>
+                    {displayFile ? (
+                        <div className="p-4 bg-slate-800 border border-slate-700 rounded-lg flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <FileTextIcon className="h-8 w-8 text-primary flex-shrink-0" />
+                                <div>
+                                    <p className="font-semibold text-white truncate max-w-xs">{displayFile.name}</p>
+                                    <p className="text-sm text-gray-400">
+                                        {typeof displayFile.size === 'number' ? `${(displayFile.size / 1024).toFixed(2)} KB` : displayFile.size}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); removeFile(); }}
+                                className="text-sm font-semibold text-red-500 hover:text-red-400 transition-colors"
+                                disabled={isLoading}
+                            >
+                                Remove
+                            </button>
+                        </div>
+                    ) : (
+                        <div
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            onClick={triggerFileSelect}
+                            className={`flex justify-center items-center w-full px-6 py-10 transition-all duration-300 bg-slate-800/50 border-2 border-slate-700 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-slate-800 ${isDragging ? 'border-primary bg-slate-800' : ''}`}
+                        >
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                className="hidden"
+                                accept=".pdf,.doc,.docx,.txt"
+                                onChange={handleFileChange}
+                                disabled={isLoading}
+                            />
                             <div className="text-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -203,71 +220,72 @@ const ResumeUploadForm: React.FC<ResumeUploadFormProps> = ({ initialData, onSubm
                                 <p className="mt-2 text-base text-gray-400"><span className="font-semibold text-primary">Click to upload</span> or drag and drop</p>
                                 <p className="text-sm text-gray-500">PDF, DOC, DOCX, or TXT</p>
                             </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormSelect 
-                        label="Interview Type" 
-                        name="interviewType" 
-                        value={interviewType} 
-                        onChange={(e) => setInterviewType(e.target.value)}
-                    >
-                        <option>Technical</option>
-                        <option>Behavioral/Managerial</option>
-                        <option>HR</option>
-                        <option>Combined</option>
-                    </FormSelect>
-                     <FormSelect label="Interviewer Persona / Style" name="persona" defaultValue={initialData?.persona}>
-                        <option>Friendly</option>
-                        <option>Strict</option>
-                        <option>Mentor</option>
-                        <option>HR-style</option>
-                    </FormSelect>
-                </div>
-                
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormSelect label="Duration" name="duration" defaultValue={initialData?.duration}>
-                        <option>15 Minutes</option>
-                        <option>30 Minutes</option>
-                        <option>45 Minutes</option>
-                        <option>60 Minutes</option>
-                    </FormSelect>
-                    {(interviewType === 'Technical' || interviewType === 'Combined') && (
-                        <FormSelect label="Difficulty Level" name="difficulty" defaultValue={initialData?.difficulty}>
-                            <option>Junior</option>
-                            <option>Mid-level</option>
-                            <option>Senior</option>
-                        </FormSelect>
+                        </div>
                     )}
                 </div>
-                
-                {(interviewType === 'Technical' || interviewType === 'Combined') && (
-                    <>
-                         <FormInput label="Main Topics to Focus On (Optional, AI will suggest from resume)" name="topics" type="text" placeholder="e.g., System Design, Behavioral" defaultValue={initialData?.topics}/>
-                         <FormSelect label="Coding Language Preference" name="language" defaultValue={initialData?.language}>
-                            <option value="">Select a language</option>
-                            {languages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
-                            <option value="Not Applicable">Not applicable</option>
-                            <option value="Other">Other</option>
-                        </FormSelect>
-                    </>
-                )}
-                
-                <FormInput label="Target Company(Optional)" name="targetCompany" type="text" placeholder="e.g., TCS, Google, KPMG" defaultValue={initialData?.targetCompany}/>
 
-                <FormToggle
-                    label="Auto-generate Report"
-                    description="Automatically generate a detailed report after the interview."
-                    name="needsReport"
-                    checked={needsReport}
-                    onChange={(e) => setNeedsReport(e.target.checked)}
-                />
+                <FormSection title="Interview Configuration">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormSelect 
+                            label="Interview Type" 
+                            name="interviewType" 
+                            value={interviewType} 
+                            onChange={(e) => setInterviewType(e.target.value)}
+                        >
+                            <option>Technical</option>
+                            <option>Behavioral/Managerial</option>
+                            <option>HR</option>
+                            <option>Combined</option>
+                        </FormSelect>
+                        <FormSelect label="Interviewer Persona" name="persona" defaultValue={initialData?.persona}>
+                            <option>Friendly</option>
+                            <option>Strict</option>
+                            <option>Mentor</option>
+                            <option>HR-style</option>
+                        </FormSelect>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormSelect label="Duration" name="duration" defaultValue={initialData?.duration}>
+                            <option>15 Minutes</option>
+                            <option>30 Minutes</option>
+                            <option>45 Minutes</option>
+                            <option>60 Minutes</option>
+                        </FormSelect>
+                        {(interviewType === 'Technical' || interviewType === 'Combined') && (
+                            <FormSelect label="Difficulty Level" name="difficulty" defaultValue={initialData?.difficulty}>
+                                <option>Junior</option>
+                                <option>Mid-level</option>
+                                <option>Senior</option>
+                            </FormSelect>
+                        )}
+                    </div>
+                </FormSection>
+                
+                <FormSection title="Preferences">
+                    <FormInput label="Target Company (Optional)" name="targetCompany" type="text" placeholder="e.g., TCS, Google, KPMG" defaultValue={initialData?.targetCompany}/>
+                     {(interviewType === 'Technical' || interviewType === 'Combined') && (
+                         <>
+                            <FormInput label="Additional Topics (Optional)" name="topics" type="text" placeholder="e.g., System Design, Behavioral" defaultValue={initialData?.topics}/>
+                            <FormSelect label="Coding Language Preference" name="language" defaultValue={initialData?.language}>
+                                <option value="">Select a language (if applicable)</option>
+                                {languages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
+                                <option value="Not Applicable">Not applicable</option>
+                                <option value="Other">Other</option>
+                            </FormSelect>
+                        </>
+                     )}
+                    <FormToggle
+                        label="Generate Performance Report"
+                        description="Receive a detailed feedback report after your interview."
+                        name="needsReport"
+                        checked={needsReport}
+                        onChange={(e) => setNeedsReport(e.target.checked)}
+                    />
+                </FormSection>
 
                 <div className="pt-4">
                     <button type="submit" className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!canSubmit || isLoading}>
-                        {isLoading ? loadingMessage : 'Upload & Start Interview'}
+                        {isLoading ? loadingMessage : 'Analyze & Proceed'}
                     </button>
                 </div>
             </form>

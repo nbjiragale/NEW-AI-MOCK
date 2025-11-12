@@ -9,7 +9,6 @@ const SpinnerIcon: React.FC<{ className?: string }> = ({ className = "h-5 w-5" }
     </svg>
 );
 
-
 const FormInput: React.FC<{ 
     label: string; 
     type: string; 
@@ -67,6 +66,13 @@ interface ManualEntryFormProps {
     onSubmit: (data: any) => void;
 }
 
+const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div className="space-y-6">
+        <h3 className="text-lg font-semibold text-primary border-b border-slate-700 pb-3 mb-6">{title}</h3>
+        {children}
+    </div>
+);
+
 const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit }) => {
     const [candidateName, setCandidateName] = useState(initialData?.candidateName || '');
     const [experience, setExperience] = useState(initialData?.experience || '');
@@ -103,10 +109,6 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
         };
         onSubmit(data);
     };
-
-    const handleAutofill = () => {
-      // This functionality is disabled as profiles are no longer saved.
-    };
     
     const handleGenerateTopics = async () => {
         if (!role.trim()) {
@@ -126,35 +128,23 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
     };
 
     return (
-        <div className="p-6 md:p-8">
-            <div className="mb-6 text-right">
-                <button
-                    type="button"
-                    onClick={handleAutofill}
-                    disabled={true}
-                    className="flex items-center gap-2 text-sm text-primary/90 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed group ml-auto"
-                >
-                    <SparkleIcon className="h-4 w-4 transition-transform group-hover:scale-110" />
-                    <span>Autofill from Profile</span>
-                </button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-10">
+            <FormSection title="Your Profile">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormInput label="Candidate Name" name="candidateName" type="text" placeholder="e.g., Jane Doe" value={candidateName} onChange={(e) => setCandidateName(e.target.value)} required />
+                    <FormInput label="Your Name" name="candidateName" type="text" placeholder="e.g., Jane Doe" value={candidateName} onChange={(e) => setCandidateName(e.target.value)} required />
                     <FormInput label="Years of Experience" name="experience" type="number" placeholder="e.g., 5" value={experience} onChange={(e) => setExperience(e.target.value)} required />
                 </div>
-                
+                <FormInput label="Role / Job Title" name="role" type="text" placeholder="e.g., Senior Software Engineer" value={role} onChange={(e) => setRole(e.target.value)} required />
+            </FormSection>
+
+            <FormSection title="Interview Configuration">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormInput label="Role / Job Title" name="role" type="text" placeholder="e.g., Senior Software Engineer" value={role} onChange={(e) => setRole(e.target.value)} required />
                     <FormSelect label="Duration" name="duration" value={duration} onChange={(e) => setDuration(e.target.value)}>
                         <option>15 Minutes</option>
                         <option>30 Minutes</option>
                         <option>45 Minutes</option>
                         <option>60 Minutes</option>
                     </FormSelect>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <FormSelect 
                         label="Interview Type" 
                         name="interviewType" 
@@ -166,74 +156,77 @@ const ManualEntryForm: React.FC<ManualEntryFormProps> = ({ initialData, onSubmit
                         <option>HR</option>
                         <option>Combined</option>
                     </FormSelect>
-                    <FormSelect label="Interviewer Persona / Style" name="persona" value={persona} onChange={(e) => setPersona(e.target.value)}>
+                </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormSelect label="Interviewer Persona" name="persona" value={persona} onChange={(e) => setPersona(e.target.value)}>
                         <option>Friendly</option>
                         <option>Strict</option>
                         <option>Mentor</option>
                         <option>HR-style</option>
                     </FormSelect>
+                     <FormInput label="Target Company" name="targetCompany" type="text" placeholder="e.g., Google, Microsoft" value={targetCompany} onChange={(e) => setTargetCompany(e.target.value)} required/>
                 </div>
-                
-                {(interviewType === 'Technical' || interviewType === 'Combined') && (
-                    <>
-                        <FormSelect label="Difficulty Level" name="difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
-                            <option>Junior</option>
-                            <option>Mid-level</option>
-                            <option>Senior</option>
-                        </FormSelect>
-                        
-                        <div>
-                            <div className="flex justify-between items-center mb-2">
-                                <label htmlFor="topics" className="block text-base font-medium text-gray-300">Main Topics to Focus On</label>
-                                <button
-                                    type="button"
-                                    onClick={handleGenerateTopics}
-                                    disabled={isGenerating || !role.trim()}
-                                    className="flex items-center gap-1.5 text-sm text-primary/90 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
-                                    aria-label="Generate topics based on role"
-                                >
-                                    {isGenerating ? <SpinnerIcon className="h-4 w-4" /> : <SparkleIcon className="h-4 w-4 transition-transform group-hover:scale-110" />}
-                                    <span>autogenerate</span>
-                                </button>
-                            </div>
-                            <textarea
-                                name="topics"
-                                id="topics"
-                                value={topics}
-                                onChange={(e) => setTopics(e.target.value)}
-                                rows={4}
-                                className="bg-slate-800 border border-slate-700 text-white text-base rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 transition"
-                                placeholder="e.g., React Hooks, TypeScript, System Design..."
-                                required
-                            />
+            </FormSection>
+
+            {(interviewType === 'Technical' || interviewType === 'Combined') && (
+                 <FormSection title="Technical Details">
+                    <FormSelect label="Difficulty Level" name="difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
+                        <option>Junior</option>
+                        <option>Mid-level</option>
+                        <option>Senior</option>
+                    </FormSelect>
+                    
+                    <div>
+                        <div className="flex justify-between items-center mb-2">
+                            <label htmlFor="topics" className="block text-base font-medium text-gray-300">Main Topics to Focus On</label>
+                            <button
+                                type="button"
+                                onClick={handleGenerateTopics}
+                                disabled={isGenerating || !role.trim()}
+                                className="flex items-center gap-1.5 text-sm text-primary/90 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
+                                aria-label="Generate topics based on role"
+                            >
+                                {isGenerating ? <SpinnerIcon className="h-4 w-4" /> : <SparkleIcon className="h-4 w-4 transition-transform group-hover:scale-110" />}
+                                <span>Autogenerate</span>
+                            </button>
                         </div>
-                        
-                        <FormSelect label="Coding Language Preference" name="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
-                            <option value="">Select a language</option>
-                            {languages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
-                            <option value="Not Applicable">Not applicable</option>
-                            <option value="Other">Other</option>
-                        </FormSelect>
-                    </>
-                )}
-
-                <FormInput label="Target Company" name="targetCompany" type="text" placeholder="e.g., TCS, KPMG, Google" value={targetCompany} onChange={(e) => setTargetCompany(e.target.value)} required/>
-
+                        <textarea
+                            name="topics"
+                            id="topics"
+                            value={topics}
+                            onChange={(e) => setTopics(e.target.value)}
+                            rows={4}
+                            className="bg-slate-800 border border-slate-700 text-white text-base rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 transition"
+                            placeholder="e.g., React Hooks, TypeScript, System Design..."
+                            required
+                        />
+                    </div>
+                    
+                    <FormSelect label="Coding Language Preference" name="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
+                        <option value="">Select a language (if applicable)</option>
+                        {languages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
+                        <option value="Not Applicable">Not applicable</option>
+                        <option value="Other">Other</option>
+                    </FormSelect>
+                </FormSection>
+            )}
+            
+            <FormSection title="Preferences">
                 <FormToggle
-                    label="Auto-generate Report"
-                    description="Automatically generate a detailed report after the interview."
+                    label="Generate Performance Report"
+                    description="Receive a detailed feedback report after your interview."
                     name="needsReport"
                     checked={needsReport}
                     onChange={(e) => setNeedsReport(e.target.checked)}
                 />
+            </FormSection>
 
-                <div className="pt-4">
-                    <button type="submit" className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20">
-                        Start Interview
-                    </button>
-                </div>
-            </form>
-        </div>
+            <div className="pt-4">
+                <button type="submit" className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20">
+                    Confirm & Proceed
+                </button>
+            </div>
+        </form>
     );
 };
 
