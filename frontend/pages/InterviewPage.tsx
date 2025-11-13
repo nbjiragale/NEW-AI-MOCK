@@ -349,7 +349,7 @@ ${questionList}
                     systemInstruction,
                     history: transcriptRef.current,
                     onTranscriptionUpdate,
-                    onAudioFinished: () => setIsAiSpeaking(false),
+                    onAudioStateChange: setIsAiSpeaking,
                     onError: handleSessionError,
                 });
             }

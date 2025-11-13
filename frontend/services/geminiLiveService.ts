@@ -65,7 +65,7 @@ interface InitiateLiveSessionParams {
   stream: MediaStream;
   systemInstruction: string;
   onTranscriptionUpdate: (update: { speaker: 'Interviewer' | 'You'; text: string }) => void;
-  onAudioFinished: () => void;
+  onAudioStateChange: (isSpeaking: boolean) => void;
   onError: (e: ErrorEvent) => void;
   history: Omit<TranscriptItem, 'id'>[];
 }
@@ -74,7 +74,7 @@ export const initiateLiveSession = async ({
   stream,
   systemInstruction,
   onTranscriptionUpdate,
-  onAudioFinished,
+  onAudioStateChange,
   onError,
   history
 }: InitiateLiveSessionParams): Promise<{ close: () => void; askForCandidateQuestions: () => void; }> => {
@@ -139,6 +139,9 @@ You were disconnected. Please resume the conversation naturally from where you l
 
         const base64EncodedAudioString = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
         if (base64EncodedAudioString) {
+          if (sources.size === 0) {
+            onAudioStateChange(true);
+          }
           nextStartTime = Math.max(nextStartTime, outputAudioContext.currentTime);
           const audioBuffer = await decodeAudioData(decode(base64EncodedAudioString), outputAudioContext, 24000, 1);
           const source = outputAudioContext.createBufferSource();
@@ -148,7 +151,7 @@ You were disconnected. Please resume the conversation naturally from where you l
           source.addEventListener('ended', () => {
             sources.delete(source);
             if (sources.size === 0) {
-              onAudioFinished();
+              onAudioStateChange(false);
             }
           });
 
@@ -164,7 +167,7 @@ You were disconnected. Please resume the conversation naturally from where you l
             sources.delete(source);
           }
           nextStartTime = 0;
-          onAudioFinished();
+          onAudioStateChange(false);
         }
       },
       onerror: (e: ErrorEvent) => {
