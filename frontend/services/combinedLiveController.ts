@@ -70,7 +70,7 @@ interface CategorizedQuestions {
 }
 
 interface ControllerCallbacks {
-  onTranscriptionUpdate: (update: { speaker: string; text: string }) => void;
+  onTranscriptionUpdate: (update: { speaker: string; text: string; isFinal: boolean; }) => void;
   onAudioStateChange: (isSpeaking: boolean) => void;
   onError: (e: ErrorEvent) => void;
 }
@@ -280,18 +280,26 @@ The session was just reconnected. Please review the history and resume the conve
                     if (message.serverContent?.outputTranscription) {
                         const text = message.serverContent.outputTranscription.text;
                         currentOutputTranscription += text;
-                        if(this.activePersona === persona) this.callbacks.onTranscriptionUpdate({ speaker: this.interviewers[persona].name, text: currentOutputTranscription });
+                        if(this.activePersona === persona) this.callbacks.onTranscriptionUpdate({ speaker: this.interviewers[persona].name, text: currentOutputTranscription, isFinal: false });
                     } else if (message.serverContent?.inputTranscription) {
                         const text = message.serverContent.inputTranscription.text;
                         currentInputTranscription += text;
-                        this.callbacks.onTranscriptionUpdate({ speaker: 'You', text: currentInputTranscription });
+                        this.callbacks.onTranscriptionUpdate({ speaker: 'You', text: currentInputTranscription, isFinal: false });
                     }
 
                     if (message.serverContent?.turnComplete) {
-                        if (currentInputTranscription) this.conversationHistory.push({ speaker: 'You', text: currentInputTranscription });
-                        if (currentOutputTranscription) this.conversationHistory.push({ speaker: this.interviewers[persona].name, text: currentOutputTranscription });
-                        currentInputTranscription = '';
-                        currentOutputTranscription = '';
+                        if (currentOutputTranscription) {
+                            this.conversationHistory.push({ speaker: this.interviewers[persona].name, text: currentOutputTranscription });
+                            if(this.activePersona === persona) {
+                                this.callbacks.onTranscriptionUpdate({ speaker: this.interviewers[persona].name, text: currentOutputTranscription, isFinal: true });
+                            }
+                            currentOutputTranscription = '';
+                        }
+                        if (currentInputTranscription) {
+                            this.conversationHistory.push({ speaker: 'You', text: currentInputTranscription });
+                            this.callbacks.onTranscriptionUpdate({ speaker: 'You', text: currentInputTranscription, isFinal: true });
+                            currentInputTranscription = '';
+                        }
                     }
 
                     // Handle Audio Playback (queued globally)

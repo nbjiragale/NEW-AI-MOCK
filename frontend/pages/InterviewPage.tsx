@@ -97,10 +97,11 @@ interface TranscriptItem {
     speaker: string;
     text: string;
     id: number;
+    status: 'interim' | 'finalized';
 }
 
 interface InterviewPageProps {
-  onLeave: (transcript: Omit<TranscriptItem, 'id'>[], duration: number, frames: string[]) => void;
+  onLeave: (transcript: Omit<TranscriptItem, 'id' | 'status'>[], duration: number, frames: string[]) => void;
   setupData: any;
   interviewQuestions: any;
   interviewerDetails: any[];
@@ -186,17 +187,32 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
         }
     }, []);
 
-  const onTranscriptionUpdate = useCallback((newItem: { speaker: string, text: string }) => {
+  const handleTranscriptionUpdate = useCallback(({ speaker, text, isFinal }: { speaker: string; text: string; isFinal: boolean }) => {
     setTranscript(prev => {
-        const lastItem = prev[prev.length - 1];
-        if (lastItem && lastItem.speaker === newItem.speaker) {
-            // Continuation of the last message, update it immutably
-            const updatedItem = { ...lastItem, text: newItem.text };
-            return [...prev.slice(0, -1), updatedItem];
-        } else {
-            // New message from a new speaker
-            return [...prev, { ...newItem, id: transcriptIdCounter.current++ }];
+        const newTranscript = [...prev];
+        
+        let lastInterimIndex = -1;
+        for (let i = newTranscript.length - 1; i >= 0; i--) {
+            if (newTranscript[i].speaker === speaker && newTranscript[i].status === 'interim') {
+                lastInterimIndex = i;
+                break;
+            }
         }
+
+        if (lastInterimIndex !== -1) {
+            newTranscript[lastInterimIndex].text = text;
+            if (isFinal) {
+                newTranscript[lastInterimIndex].status = 'finalized';
+            }
+        } else if (!isFinal) {
+            newTranscript.push({
+                speaker,
+                text,
+                id: transcriptIdCounter.current++,
+                status: 'interim',
+            });
+        }
+        return newTranscript;
     });
   }, []);
   
@@ -290,9 +306,9 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
                     interviewers: interviewersDetails,
                     questions: interviewQuestions,
                     setupData: setupData,
-                    initialHistory: transcriptRef.current,
+                    initialHistory: transcriptRef.current.filter(t => t.status === 'finalized'),
                     callbacks: {
-                        onTranscriptionUpdate,
+                        onTranscriptionUpdate: handleTranscriptionUpdate,
                         onAudioStateChange: (speaking) => {
                             setIsAiSpeaking(speaking);
                             if (!speaking) setActiveInterviewerName(null);
@@ -347,8 +363,8 @@ ${questionList}
                 sessionManagerRef.current = await initiateLiveSession({
                     stream,
                     systemInstruction,
-                    history: transcriptRef.current,
-                    onTranscriptionUpdate,
+                    history: transcriptRef.current.filter(t => t.status === 'finalized'),
+                    onTranscriptionUpdate: handleTranscriptionUpdate,
                     onAudioStateChange: setIsAiSpeaking,
                     onError: handleSessionError,
                 });
@@ -362,7 +378,7 @@ ${questionList}
             setSessionStatus('ERROR');
             setIsReconnecting(false);
         }
-  }, [isCombinedMode, interviewersDetails, interviewQuestions, setupData, onTranscriptionUpdate]);
+  }, [isCombinedMode, interviewersDetails, interviewQuestions, setupData, handleTranscriptionUpdate]);
 
 
   // Main effect for media and live session
@@ -535,7 +551,7 @@ ${questionList}
     const endTime = Date.now();
     const durationInSeconds = startTimeRef.current ? Math.round((endTime - startTimeRef.current) / 1000) : 0;
     
-    // Remove id from transcript before passing it on
+    // Remove id and status from transcript before passing it on
     const finalTranscript = transcript.map(({ speaker, text }) => ({ speaker, text }));
     onLeave(finalTranscript, durationInSeconds, recordedFramesRef.current);
   };

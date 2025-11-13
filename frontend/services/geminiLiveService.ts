@@ -58,13 +58,12 @@ function createBlob(data: Float32Array): Blob {
 interface TranscriptItem {
     speaker: string;
     text: string;
-    id: number;
 }
 
 interface InitiateLiveSessionParams {
   stream: MediaStream;
   systemInstruction: string;
-  onTranscriptionUpdate: (update: { speaker: 'Interviewer' | 'You'; text: string }) => void;
+  onTranscriptionUpdate: (update: { speaker: 'Interviewer' | 'You'; text: string; isFinal: boolean; }) => void;
   onAudioStateChange: (isSpeaking: boolean) => void;
   onError: (e: ErrorEvent) => void;
   history: Omit<TranscriptItem, 'id'>[];
@@ -123,18 +122,24 @@ You were disconnected. Please resume the conversation naturally from where you l
       },
       onmessage: async (message: LiveServerMessage) => {
         if (message.serverContent?.outputTranscription) {
-          const text = message.serverContent.outputTranscription.text;
-          currentOutputTranscription += text;
-          onTranscriptionUpdate({ speaker: 'Interviewer', text: currentOutputTranscription });
+            const text = message.serverContent.outputTranscription.text;
+            currentOutputTranscription += text;
+            onTranscriptionUpdate({ speaker: 'Interviewer', text: currentOutputTranscription, isFinal: false });
         } else if (message.serverContent?.inputTranscription) {
-          const text = message.serverContent.inputTranscription.text;
-          currentInputTranscription += text;
-          onTranscriptionUpdate({ speaker: 'You', text: currentInputTranscription });
+            const text = message.serverContent.inputTranscription.text;
+            currentInputTranscription += text;
+            onTranscriptionUpdate({ speaker: 'You', text: currentInputTranscription, isFinal: false });
         }
 
         if (message.serverContent?.turnComplete) {
-            currentInputTranscription = '';
-            currentOutputTranscription = '';
+            if (currentOutputTranscription) {
+                onTranscriptionUpdate({ speaker: 'Interviewer', text: currentOutputTranscription, isFinal: true });
+                currentOutputTranscription = '';
+            }
+            if (currentInputTranscription) {
+                onTranscriptionUpdate({ speaker: 'You', text: currentInputTranscription, isFinal: true });
+                currentInputTranscription = '';
+            }
         }
 
         const base64EncodedAudioString = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
