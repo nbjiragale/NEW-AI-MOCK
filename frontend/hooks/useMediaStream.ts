@@ -66,6 +66,7 @@ export const useMediaStream = (recordSession: boolean) => {
         checkSpeaking();
     }, []);
     
+    // Effect to get the media stream
     useEffect(() => {
         let isMounted = true;
         const getMedia = async () => {
@@ -73,7 +74,6 @@ export const useMediaStream = (recordSession: boolean) => {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 if (isMounted) {
                     streamRef.current = stream;
-                    if (videoRef.current) videoRef.current.srcObject = stream;
                     setStreamLoaded(true);
                     setupAudioAnalysis(stream);
                 }
@@ -97,6 +97,13 @@ export const useMediaStream = (recordSession: boolean) => {
             }
         };
     }, [setupAudioAnalysis]);
+
+    // Effect to attach the stream to the video element once it's ready
+    useEffect(() => {
+        if (streamLoaded && videoRef.current && streamRef.current) {
+            videoRef.current.srcObject = streamRef.current;
+        }
+    }, [streamLoaded]);
     
     useEffect(() => {
         if (!recordSession || !isCameraOn || !videoRef.current || !canvasRef.current || !streamLoaded) return;

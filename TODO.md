@@ -4,9 +4,13 @@ This document outlines the key tasks for improving the AI Mock Interview platfor
 
 ---
 
-###  हाई-प्रायरिटी / कोर आर्किटेक्चर
+### High-Priority / Core Architecture
 
 These tasks are foundational and will significantly improve the app's scalability and maintainability.
+
+-   [x] **Secure API Keys with Environment Variables:**
+    -   **Why:** Hardcoding API keys (like Supabase credentials) in the source code is a critical security vulnerability, as they become publicly visible.
+    -   **Action:** Moved Supabase credentials to environment variables (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) and accessed them via `process.env`. This ensures keys are managed securely in the deployment environment.
 
 -   [ ] **Implement a Build Process with Vite:**
     -   **Why:** The current CDN-based setup is not suitable for production. A build tool like Vite will enable code bundling, minification, tree-shaking, and proper environment variable management.
@@ -16,17 +20,13 @@ These tasks are foundational and will significantly improve the app's scalabilit
     -   **Why:** The current string-based routing in `App.tsx` is brittle, prevents browser history (back/forward buttons), and doesn't allow for deep linking.
     -   **Action:** Replace the `page` state with `createBrowserRouter` and use `<Link>` and `useNavigate` for navigation.
 
--   [ ] **Refactor State Management with React Context:**
+-   [x] **Refactor State Management with React Context:**
     -   **Why:** `App.tsx` holds all interview-related state (`setupData`, `transcript`, etc.), leading to significant prop-drilling.
-    -   **Action:** Create an `InterviewContext` to provide interview state and dispatcher functions to the relevant pages (`SetupPage`, `InterviewPage`, `InterviewSummaryPage`).
-
--   [ ] **Secure API Keys with Environment Variables:**
-    -   **Why:** The Supabase URL and anon key are hardcoded in `supabaseClient.ts`, which is a critical security vulnerability.
-    -   **Action:** Move these keys to `.env` variables (e.g., `VITE_SUPABASE_URL`) and access them via `import.meta.env`.
+    -   **Action:** Created an `InterviewContext` to provide interview state and dispatcher functions to the relevant pages. Implemented `AuthContext` for user session management.
 
 ---
 
-### कंपोनेंट रिफैक्टरिंग और UX सुधार
+### Component Refactoring & UX Improvements
 
 These tasks focus on improving code structure and the user experience.
 
@@ -42,7 +42,7 @@ These tasks focus on improving code structure and the user experience.
 
 ---
 
-### नई सुविधाएँ और एकीकरण
+### New Features & Integrations
 
 These tasks involve completing and integrating planned features.
 
@@ -51,14 +51,14 @@ These tasks involve completing and integrating planned features.
     -   **Action:** In `InterviewPage.tsx`, instantiate `RealtimeAnalysisService`, manage its state, and render the `RealtimeFeedback` component with the live analysis results (pace and eye contact).
 
 -   [ ] **Implement Holistic Analysis on Summary Page:**
-    -   **Why:** The `geminiForHolisticAnalysis.ts` service is created but never called. This service can provide valuable feedback on body language and vocal tone.
+    -   **Why:** The `geminiForHolisticAnalysis.ts` service is created but never called. This is a missed opportunity for valuable feedback on body language and vocal tone.
     -   **Action:**
-        -   In `InterviewPage.tsx`, capture periodic video frames and save them.
+        -   In `InterviewPage.tsx`, ensure periodic video frames are captured and saved.
         -   In `InterviewSummaryPage.tsx`, if frames are available, call `generateHolisticAnalysis` and display the results in new "Vocal Delivery" and "Non-Verbal Cues" sections.
 
 ---
 
-### कोड क्वालिटी और क्लीनअप
+### Code Quality & Cleanup
 
 General housekeeping for a healthier codebase.
 
@@ -66,9 +66,9 @@ General housekeeping for a healthier codebase.
     -   **Why:** The project currently has no automated tests, making it risky to refactor or add new features.
     -   **Action:** Set up Jest and React Testing Library. Add initial tests for critical components (`AuthModal`) and services (`geminiStartInterview`).
 
--   [ ] **Remove Unused and Empty Files:**
+-   [x] **Remove Unused and Empty Files:**
     -   **Why:** The project contains empty service files that add clutter.
-    -   **Action:** Delete `frontend/services/geminiService.ts` and `frontend/services/geminiLiveServiceCombined.ts`.
+    -   **Action:** Deleted `frontend/services/geminiService.ts` and `frontend/services/geminiLiveServiceCombined.ts`.
 
 -   [ ] **Enhance Accessibility (A11y):**
     -   **Why:** Ensure the application is usable by everyone.

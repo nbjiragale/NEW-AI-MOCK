@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 const LogoIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -11,6 +12,7 @@ const LogoIcon: React.FC<{ className?: string }> = ({ className }) => (
 const Header: React.FC<{ onGetStarted: () => void; }> = ({ onGetStarted }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -65,9 +67,15 @@ const Header: React.FC<{ onGetStarted: () => void; }> = ({ onGetStarted }) => {
             ))}
           </nav>
           <div className="hidden md:flex items-center gap-4">
-            <button onClick={onGetStarted} className="bg-primary text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-500 transition-colors duration-300">
-                Get Started
-            </button>
+            {user ? (
+                <button onClick={signOut} className="bg-slate-700 text-white font-semibold px-5 py-2 rounded-lg hover:bg-slate-600 transition-colors duration-300">
+                    Logout
+                </button>
+            ) : (
+                <button onClick={onGetStarted} className="bg-primary text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-500 transition-colors duration-300">
+                    Get Started
+                </button>
+            )}
           </div>
           <button className="md:hidden text-white z-50" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle menu" aria-expanded={isMenuOpen}>
              {isMenuOpen ? (
@@ -93,9 +101,15 @@ const Header: React.FC<{ onGetStarted: () => void; }> = ({ onGetStarted }) => {
                   </a>
                 ))}
                 <div className="border-t border-slate-700 w-full max-w-xs my-4"></div>
-                <button onClick={handleMobileGetStarted} className="w-full max-w-xs bg-primary text-white font-semibold px-8 py-3 rounded-lg hover:bg-blue-500 transition-colors duration-300 text-lg">
-                    Get Started
-                </button>
+                {user ? (
+                    <button onClick={() => { signOut(); setIsMenuOpen(false); }} className="w-full max-w-xs bg-slate-700 text-white font-semibold px-8 py-3 rounded-lg hover:bg-slate-600 transition-colors duration-300 text-lg">
+                        Logout
+                    </button>
+                ) : (
+                    <button onClick={handleMobileGetStarted} className="w-full max-w-xs bg-primary text-white font-semibold px-8 py-3 rounded-lg hover:bg-blue-500 transition-colors duration-300 text-lg">
+                        Get Started
+                    </button>
+                )}
             </nav>
         </div>
       </div>
