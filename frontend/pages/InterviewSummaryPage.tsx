@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useInterview } from '../contexts/InterviewContext';
 import { generateInterviewReport } from '../services/geminiForReportGeneration';
 import { generateHolisticAnalysis } from '../services/geminiForHolisticAnalysis';
 import { downloadReportAsPdf } from '../services/pdfGenerator';
@@ -76,15 +77,16 @@ interface HolisticAnalysisData {
     };
 }
 
-interface InterviewSummaryPageProps {
-    onStartNew: () => void;
-    setupData?: any;
-    transcript?: TranscriptItem[] | null;
-    interviewDuration?: number | null;
-    recordedVideoFrames?: string[] | null;
-}
+const InterviewSummaryPage: React.FC = () => {
+    const { 
+        setupData, 
+        // FIX: The property in InterviewState is interviewTranscript, not transcript.
+        interviewTranscript: transcript, 
+        interviewDuration, 
+        recordedVideoFrames, 
+        goToLanding: onStartNew 
+    } = useInterview();
 
-const InterviewSummaryPage: React.FC<InterviewSummaryPageProps> = ({ setupData, transcript, interviewDuration, recordedVideoFrames, onStartNew }) => {
     const [report, setReport] = useState<ReportData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);

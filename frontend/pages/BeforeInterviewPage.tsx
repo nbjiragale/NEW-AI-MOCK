@@ -1,14 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useInterview } from '../contexts/InterviewContext';
 import { checkDetailsConsistency, validateCompany, generateInterviewQuestions } from '../services/geminiStartInterview';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import { ChevronRightIcon } from '../icons/ChevronRightIcon';
 import { XCircleIcon } from '../icons/XCircleIcon';
-
-interface BeforeInterviewPageProps {
-    setupData: any;
-    onEdit: () => void;
-    onStartInterview: (questions: any, interviewerDetails: any) => void;
-}
 
 const interviewerNames = [
   'Anna', 'Lily', 'Sara', 'Nina', 'Emma', 'Zoe', 'Lucy', 'Ruby', 'Ella',
@@ -88,7 +83,9 @@ const LogItem: React.FC<{ entry: LogEntry }> = ({ entry }) => {
     );
 };
 
-const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, onEdit, onStartInterview }) => {
+const BeforeInterviewPage: React.FC = () => {
+    const { setupData, backToSetup, startInterview } = useInterview();
+
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [processStatus, setProcessStatus] = useState<'running' | 'paused' | 'error' | 'finished'>('running');
     const [pauseReason, setPauseReason] = useState<'inconsistent' | 'invalid_company' | null>(null);
@@ -219,11 +216,11 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
                 const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
                 return () => clearTimeout(timer);
             } else {
-                onStartInterview(generatedQuestionsRef.current, interviewerDetailsRef.current);
+                startInterview(generatedQuestionsRef.current, interviewerDetailsRef.current);
             }
         }
         return () => { document.title = 'AI Mock Interview'; };
-    }, [showConsole, countdown, onStartInterview]);
+    }, [showConsole, countdown, startInterview]);
     
     useEffect(() => {
         if (!processingStateRef.current.hasStarted) {
@@ -254,7 +251,7 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
                              <div className="p-4 border-t border-slate-700 bg-slate-800/50 rounded-b-2xl">
                                 {processStatus === 'paused' && (
                                     <div className="flex flex-col sm:flex-row gap-4">
-                                        <button onClick={onEdit} className="flex-1 bg-slate-600 text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-slate-500 transition-colors">Edit Details</button>
+                                        <button onClick={backToSetup} className="flex-1 bg-slate-600 text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-slate-500 transition-colors">Edit Details</button>
                                         <button onClick={() => runProcess(pauseReason === 'invalid_company')} className="flex-1 bg-primary text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-blue-500 transition-colors">
                                             Proceed Anyway
                                         </button>
@@ -262,7 +259,7 @@ const BeforeInterviewPage: React.FC<BeforeInterviewPageProps> = ({ setupData, on
                                 )}
                                 {processStatus === 'error' && (
                                     <div className="flex flex-col sm:flex-row gap-4">
-                                        <button onClick={onEdit} className="flex-1 bg-slate-600 text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-slate-500 transition-colors">Go Back & Edit</button>
+                                        <button onClick={backToSetup} className="flex-1 bg-slate-600 text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-slate-500 transition-colors">Go Back & Edit</button>
                                         <button onClick={() => startPreparation(true)} className="flex-1 bg-primary text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-blue-500 transition-colors">
                                             Try Again
                                         </button>

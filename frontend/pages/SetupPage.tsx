@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ManualEntryForm from '../components/ManualEntryForm';
 import ResumeUploadForm from '../components/ResumeUploadForm';
 import PracticeModeForm from '../components/PracticeModeForm';
+import { useInterview } from '../contexts/InterviewContext';
 import { PencilIcon } from '../icons/PencilIcon';
 import { UploadIcon } from '../icons/UploadIcon';
 import { TargetIcon } from '../icons/TargetIcon';
@@ -9,12 +10,9 @@ import { SettingsIcon } from '../icons/SettingsIcon';
 
 type Tab = 'manual' | 'resume' | 'practice';
 
-interface SetupPageProps {
-  initialData?: any;
-  onStart: (data: any) => void;
-}
+const SetupPage: React.FC = () => {
+  const { setupData: initialData, goToVerification } = useInterview();
 
-const SetupPage: React.FC<SetupPageProps> = ({ initialData, onStart }) => {
   const getInitialTab = (): Tab => {
     if (!initialData) return 'manual';
     switch (initialData.type) {
@@ -29,9 +27,9 @@ const SetupPage: React.FC<SetupPageProps> = ({ initialData, onStart }) => {
 
   const renderTabContent = () => {
     const content = {
-      manual: <ManualEntryForm initialData={initialData?.type === 'Manual Entry' ? initialData : undefined} onSubmit={onStart} />,
-      resume: <ResumeUploadForm initialData={initialData?.type === 'By Resume' ? initialData : undefined} onSubmit={onStart} />,
-      practice: <PracticeModeForm initialData={initialData?.type === 'Practice Mode' ? initialData : undefined} onSubmit={onStart} />,
+      manual: <ManualEntryForm initialData={initialData?.type === 'Manual Entry' ? initialData : undefined} onSubmit={goToVerification} />,
+      resume: <ResumeUploadForm initialData={initialData?.type === 'By Resume' ? initialData : undefined} onSubmit={goToVerification} />,
+      practice: <PracticeModeForm initialData={initialData?.type === 'Practice Mode' ? initialData : undefined} onSubmit={goToVerification} />,
     };
     return (
       <div key={activeTab} className="animate-fade-in-up" style={{ animationDuration: '0.5s' }}>

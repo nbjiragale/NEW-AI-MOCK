@@ -1,4 +1,5 @@
 import React from 'react';
+import { useInterview } from '../contexts/InterviewContext';
 import { UserIcon } from '../icons/UserIcon';
 import { BriefcaseIcon } from '../icons/BriefcaseIcon';
 import { ClockIcon } from '../icons/ClockIcon';
@@ -12,9 +13,6 @@ import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import { XCircleIcon } from '../icons/XCircleIcon';
 
 interface VerificationPageProps {
-    setupData: any;
-    onEdit: () => void;
-    onConfirm: () => void;
 }
 
 // A more visually appealing component for displaying individual details.
@@ -52,7 +50,8 @@ const FullWidthInfo: React.FC<{ icon: React.ReactNode; label: string; children: 
 );
 
 
-const VerificationPage: React.FC<VerificationPageProps> = ({ setupData, onEdit, onConfirm }) => {
+const VerificationPage: React.FC<VerificationPageProps> = () => {
+    const { setupData, backToSetup, goToBeforeInterview } = useInterview();
 
     if (!setupData) {
         return (
@@ -193,13 +192,13 @@ const VerificationPage: React.FC<VerificationPageProps> = ({ setupData, onEdit, 
 
                     <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <button 
-                            onClick={onEdit}
+                            onClick={backToSetup}
                             className="w-full bg-slate-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-600 transition-transform transform hover:scale-105 duration-300"
                         >
                            Edit Details
                         </button>
                          <button 
-                            onClick={onConfirm}
+                            onClick={goToBeforeInterview}
                             className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20"
                         >
                             Confirm & Start
