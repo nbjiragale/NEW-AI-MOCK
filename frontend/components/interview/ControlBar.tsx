@@ -4,6 +4,7 @@ import { CameraOff } from '../../icons/CameraOff';
 import { MicOn } from '../../icons/MicOn';
 import { MicOff } from '../../icons/MicOff';
 import { PhoneHangUpIcon } from '../../icons/PhoneHangUpIcon';
+import { TranscriptIcon } from '../../icons/TranscriptIcon';
 
 const ControlButton: React.FC<{
   onClick: () => void;
@@ -31,6 +32,8 @@ interface ControlBarProps {
     onLeave?: () => void;
     isAiSpeaking: boolean;
     handleAskQuestion?: (type: 'technical' | 'behavioral' | 'hr') => void;
+    isTranscriptVisible?: boolean;
+    toggleTranscript?: () => void;
 }
 
 const ControlBar: React.FC<ControlBarProps> = (props) => {
@@ -51,10 +54,24 @@ const ControlBar: React.FC<ControlBarProps> = (props) => {
             <ControlButton onClick={props.toggleCamera} ariaLabel={props.isCameraOn ? 'Turn off camera' : 'Turn on camera'} className={props.isCameraOn ? 'bg-slate-700/80 hover:bg-slate-600/80' : 'bg-red-600/80 hover:bg-red-500/80'}>
                 {props.isCameraOn ? <CameraOn className="h-6 w-6" /> : <CameraOff className="h-6 w-6" />}
             </ControlButton>
-            {props.onLeave && (
-                <ControlButton onClick={props.onLeave} ariaLabel="Leave call" className="bg-red-600 hover:bg-red-500">
-                    <PhoneHangUpIcon />
+
+            {props.toggleTranscript && (
+                 <ControlButton
+                    onClick={props.toggleTranscript}
+                    ariaLabel={props.isTranscriptVisible ? 'Hide Transcript' : 'Show Transcript'}
+                    className={props.isTranscriptVisible ? 'bg-slate-700/80 hover:bg-slate-600/80' : 'bg-primary/80 hover:bg-primary'}
+                >
+                    <TranscriptIcon className="h-6 w-6" />
                 </ControlButton>
+            )}
+
+            {props.onLeave && (
+                <>
+                    <div className="w-px h-8 bg-slate-700 mx-2"></div>
+                    <ControlButton onClick={props.onLeave} ariaLabel="Leave call" className="bg-red-600 hover:bg-red-500">
+                        <PhoneHangUpIcon />
+                    </ControlButton>
+                </>
             )}
         </div>
     );

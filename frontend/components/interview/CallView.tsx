@@ -16,6 +16,8 @@ interface CallViewProps {
     transcript: TranscriptItem[];
     sessionStatus: 'IDLE' | 'CONNECTING' | 'CONNECTED' | 'ERROR';
     isReconnecting: boolean;
+    isTranscriptVisible: boolean;
+    toggleTranscript: () => void;
     toggleCamera: () => void;
     toggleMic: () => void;
     isMicOn: boolean;
@@ -49,17 +51,21 @@ const CallView: React.FC<CallViewProps> = (props) => {
                     isCameraOn={props.isCameraOn}
                     toggleMic={props.toggleMic}
                     isMicOn={props.isMicOn}
+                    onLeave={props.onLeave}
                     isAiSpeaking={props.isAiSpeaking}
                     handleAskQuestion={props.handleAskQuestion}
+                    isTranscriptVisible={props.isTranscriptVisible}
+                    toggleTranscript={props.toggleTranscript}
                 />
             </div>
-            <TranscriptPanel
-                transcript={props.transcript}
-                sessionStatus={props.sessionStatus}
-                isReconnecting={props.isReconnecting}
-                onLeave={props.onLeave}
-                transcriptEndRef={transcriptEndRef}
-            />
+            {props.isTranscriptVisible && (
+                <TranscriptPanel
+                    transcript={props.transcript}
+                    sessionStatus={props.sessionStatus}
+                    isReconnecting={props.isReconnecting}
+                    transcriptEndRef={transcriptEndRef}
+                />
+            )}
         </div>
     );
 };

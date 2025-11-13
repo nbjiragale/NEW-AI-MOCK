@@ -15,6 +15,7 @@ const InterviewPage: React.FC = () => {
   // High-level UI state
   const [isCodingMode, setIsCodingMode] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [isTranscriptVisible, setIsTranscriptVisible] = useState(true);
   const startTimeRef = useRef<number | null>(null);
 
   // Custom Hooks for managing complex logic
@@ -120,6 +121,8 @@ const InterviewPage: React.FC = () => {
             transcript={transcript}
             sessionStatus={sessionStatus}
             isReconnecting={isReconnecting}
+            isTranscriptVisible={isTranscriptVisible}
+            toggleTranscript={() => setIsTranscriptVisible(v => !v)}
             onLeave={() => setShowLeaveConfirm(true)}
             toggleCamera={toggleCamera}
             toggleMic={toggleMic}
