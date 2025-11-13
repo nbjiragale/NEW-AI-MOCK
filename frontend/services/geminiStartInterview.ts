@@ -167,10 +167,12 @@ export const generateTopicsForRole = async (role: string, experience: string): P
     `;
 
     try {
-        const response = await ai.models.generateContent({
+        const apiCall = () => ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
         });
+
+        const response = await callGeminiWithRetry(apiCall);
 
         const text = response.text.trim();
         // Clean up the response to ensure it's a clean, comma-separated list.
