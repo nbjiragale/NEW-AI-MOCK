@@ -13,10 +13,10 @@ const TranscriptItemView: React.FC<{ item: TranscriptItem }> = ({ item }) => {
 
     return (
         <div className={`flex flex-col group ${speaker === 'You' ? 'items-end' : 'items-start'}`}>
-            <div className={`rounded-lg px-3 py-2 max-w-[90%] transition-colors duration-300 ${
+            <div className={`inline-block rounded-lg px-3 py-2 max-w-[90%] transition-colors duration-300 ${
                 speaker === 'You' ? 'bg-primary' : 'bg-slate-700'
             }`}>
-                <p className={`text-sm break-words ${isInterim ? 'text-gray-300' : 'text-white'}`}>
+                <p className={`text-sm break-words text-left ${isInterim ? 'text-gray-300' : 'text-white'}`}>
                     <span className="block text-xs font-bold mb-1 text-white">{speaker}</span>
                     {text}
                 </p>
