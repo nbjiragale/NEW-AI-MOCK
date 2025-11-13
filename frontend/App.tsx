@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Header from './components/Header';
 import HeroSection from './components/HeroSection';
 import FeaturesSection from './components/FeaturesSection';
@@ -13,8 +13,6 @@ import BeforeInterviewPage from './pages/BeforeInterviewPage';
 import InterviewPage from './pages/InterviewPage';
 import InterviewSummaryPage from './pages/InterviewSummaryPage';
 import { InterviewProvider, useInterview } from './contexts/InterviewContext';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import AuthModal from './components/AuthModal';
 
 const PageRenderer: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) => {
     const { page } = useInterview();
@@ -60,37 +58,28 @@ const PageRenderer: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) 
 };
 
 const AppContent: React.FC = () => {
-    const { user } = useAuth();
     const { goToSetup } = useInterview();
-    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
     const handleGetStarted = () => {
-        if (user) {
-            goToSetup();
-        } else {
-            setIsAuthModalOpen(true);
-        }
+        goToSetup();
     };
 
     return (
         <>
             <PageRenderer onGetStarted={handleGetStarted} />
-            <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
         </>
     );
 }
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-        <InterviewProvider>
-            <div className="bg-dark min-h-screen overflow-x-hidden">
-                <main>
-                    <AppContent />
-                </main>
-            </div>
-        </InterviewProvider>
-    </AuthProvider>
+    <InterviewProvider>
+        <div className="bg-dark min-h-screen overflow-x-hidden">
+            <main>
+                <AppContent />
+            </main>
+        </div>
+    </InterviewProvider>
   );
 };
 

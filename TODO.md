@@ -8,10 +8,6 @@ This document outlines the key tasks for improving the AI Mock Interview platfor
 
 These tasks are foundational and will significantly improve the app's scalability and maintainability.
 
--   [x] **Secure API Keys with Environment Variables:**
-    -   **Why:** Hardcoding API keys (like Supabase credentials) in the source code is a critical security vulnerability, as they become publicly visible.
-    -   **Action:** Moved Supabase credentials to environment variables (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) and accessed them via `process.env`. This ensures keys are managed securely in the deployment environment.
-
 -   [ ] **Implement a Build Process with Vite:**
     -   **Why:** The current CDN-based setup is not suitable for production. A build tool like Vite will enable code bundling, minification, tree-shaking, and proper environment variable management.
     -   **Action:** Set up a `vite.config.ts`, manage dependencies via `package.json`, and replace CDN `<script>` tags.
@@ -22,7 +18,7 @@ These tasks are foundational and will significantly improve the app's scalabilit
 
 -   [x] **Refactor State Management with React Context:**
     -   **Why:** `App.tsx` holds all interview-related state (`setupData`, `transcript`, etc.), leading to significant prop-drilling.
-    -   **Action:** Created an `InterviewContext` to provide interview state and dispatcher functions to the relevant pages. Implemented `AuthContext` for user session management.
+    -   **Action:** Created an `InterviewContext` to provide interview state and dispatcher functions to the relevant pages. Authentication has been removed from the application.
 
 ---
 
