@@ -138,6 +138,12 @@ const VerificationPage: React.FC<VerificationPageProps> = ({ setupData, onEdit, 
                 </FullWidthInfo>
             )}
 
+            {details.practiceType === 'By Notes' && (
+                <FullWidthInfo icon={<FileTextIcon className="w-6 h-6"/>} label="Your Notes for Analysis">
+                    <pre className="whitespace-pre-wrap font-sans text-sm">{details.notesContent}</pre>
+                </FullWidthInfo>
+            )}
+
             {details.practiceType === 'Build Confidence' && (
                 <FullWidthInfo icon={<FileTextIcon className="w-6 h-6"/>} label="Your Reflections for Confidence Building">
                     <div className="space-y-4">

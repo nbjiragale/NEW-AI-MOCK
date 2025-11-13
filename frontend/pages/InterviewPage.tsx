@@ -100,7 +100,7 @@ interface TranscriptItem {
 }
 
 interface InterviewPageProps {
-  onLeave: (transcript: Omit<TranscriptItem, 'id'>[], duration: number) => void;
+  onLeave: (transcript: Omit<TranscriptItem, 'id'>[], duration: number, frames: string[]) => void;
   setupData: any;
   interviewQuestions: any;
   interviewerDetails: any[];
@@ -127,6 +127,8 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
   const [isTimerEnabled, setIsTimerEnabled] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const recordedFramesRef = useRef<string[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const sessionManagerRef = useRef<{ close: () => void; askQuestion?: (type: Persona) => void; askForCandidateQuestions?: () => void; } | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -449,6 +451,39 @@ ${questionList}
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [transcript]);
 
+  // Fix: Add useEffect to capture video frames for summary analysis.
+  useEffect(() => {
+    if (!setupData?.recordSession || !isCameraOn || !videoRef.current || !canvasRef.current || !streamLoaded) {
+        return;
+    }
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+
+    if (!context) return;
+
+    const captureFrame = () => {
+        if (video.readyState >= 2) { // Ensure video has data
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            // Capture frame every 5 seconds, get base64 data without prefix
+            const frameData = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+            if (frameData) {
+                recordedFramesRef.current.push(frameData);
+            }
+        }
+    };
+
+    // Capture a frame every 5 seconds.
+    const intervalId = setInterval(captureFrame, 5000);
+
+    return () => {
+        clearInterval(intervalId);
+    };
+  }, [setupData?.recordSession, isCameraOn, streamLoaded]);
+
   const toggleCamera = async () => {
     if (!streamRef.current) return;
     if (isCameraOn) {
@@ -499,7 +534,7 @@ ${questionList}
     
     // Remove id from transcript before passing it on
     const finalTranscript = transcript.map(({ speaker, text }) => ({ speaker, text }));
-    onLeave(finalTranscript, durationInSeconds);
+    onLeave(finalTranscript, durationInSeconds, recordedFramesRef.current);
   };
   
   const handleAskQuestion = (type: Persona) => {
@@ -575,6 +610,7 @@ ${questionList}
 
   return (
     <div className="bg-dark h-screen w-screen flex flex-col text-white font-sans relative">
+      <canvas ref={canvasRef} className="hidden" />
       {/* ======================================================================
       IMPROVEMENT 1: Unified Header Bar
       ======================================================================

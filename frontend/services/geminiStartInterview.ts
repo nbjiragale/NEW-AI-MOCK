@@ -275,6 +275,18 @@ Session Details:
 
 Your Task:
 Craft a set of interview questions that dive deep into this topic. ${questionFocus}`;
+            } else if (setupData.practiceType === 'By Notes') {
+                prompt = `You're an expert interview coach. A user wants you to act as an interviewer and ask them questions based on the notes they've provided. Your goal is to create a realistic and helpful interview session.
+
+Session Details:
+- Interview Type: ${setupData.interviewType}
+- User's Notes:
+---
+${setupData.notesContent}
+---
+
+Your Task:
+Thoroughly analyze the user's notes. Based on the content, craft a set of interview questions that would be appropriate for the specified interview type. The questions should directly relate to the concepts, technologies, or experiences mentioned in the notes. ${questionFocus}`;
             } else if (setupData.practiceType === 'Build Confidence') {
                 const reflections = setupData.confidenceAnswers.map((item: { question: string, answer: string }) => `- ${item.question}\n  - User's Answer: ${item.answer}`).join('\n');
                 prompt = `You're an empathetic and encouraging interview coach. A user has shared some areas where they lack confidence and wants your help to practice and improve. Your goal is to build them up, not tear them down.

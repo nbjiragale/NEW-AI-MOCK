@@ -3,8 +3,9 @@ import { TagIcon } from '../icons/TagIcon';
 import { ListIcon } from '../icons/ListIcon';
 import { ShieldIcon } from '../icons/ShieldIcon';
 import { SpeechBubbleIcon } from '../icons/SpeechBubbleIcon';
+import { FileTextIcon } from '../icons/FileTextIcon';
 
-type PracticeOption = 'topic' | 'list' | 'confidence' | 'fluency';
+type PracticeOption = 'topic' | 'list' | 'notes' | 'confidence' | 'fluency';
 
 const FormInput: React.FC<{ label: string; type: string; placeholder: string; name: string, value: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, required?: boolean }> = ({ label, type, placeholder, name, value, onChange, required = false }) => (
     <div>
@@ -85,6 +86,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
         if (initialData.practiceType === 'By List of Questions') return 'list';
         if (initialData.practiceType === 'Build Confidence') return 'confidence';
         if (initialData.practiceType === 'Fluency Practice') return 'fluency';
+        if (initialData.practiceType === 'By Notes') return 'notes';
         return 'topic';
     };
 
@@ -105,6 +107,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
     const [interviewType, setInterviewType] = useState(initialData?.interviewType || 'Technical');
     const [topicName, setTopicName] = useState(initialData?.practiceType === 'By Topic Name' ? initialData.topicName : '');
     const [questionList, setQuestionList] = useState(initialData?.practiceType === 'By List of Questions' ? initialData.questionList : '');
+    const [notesContent, setNotesContent] = useState(initialData?.practiceType === 'By Notes' ? initialData.notesContent : '');
     const [confidenceAnswers, setConfidenceAnswers] = useState<Record<number, string>>(getInitialConfidenceAnswers());
     const [needsReport, setNeedsReport] = useState(initialData?.needsReport ?? true);
     const [recordSession, setRecordSession] = useState(initialData?.recordSession ?? true);
@@ -139,6 +142,8 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                 return !topicName.trim();
             case 'list':
                 return !questionList.trim();
+            case 'notes':
+                return !notesContent.trim();
             case 'confidence':
                 return Object.values(confidenceAnswers).some((answer: string) => !answer.trim());
             case 'fluency':
@@ -156,6 +161,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
             case 'topic': practiceTypeLabel = 'By Topic Name'; break;
             case 'list': practiceTypeLabel = 'By List of Questions'; break;
             case 'fluency': practiceTypeLabel = 'Fluency Practice'; break;
+            case 'notes': practiceTypeLabel = 'By Notes'; break;
         }
 
         const baseData = {
@@ -176,6 +182,9 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
             case 'list':
                 practiceData = { questionList };
                 break;
+            case 'notes':
+                practiceData = { notesContent };
+                break;
             case 'confidence':
                 practiceData = { confidenceAnswers: Object.entries(confidenceAnswers).map(([key, value]) => ({ question: confidenceQuestions[parseInt(key)], answer: value }))};
                 break;
@@ -190,6 +199,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
     const practiceOptionsConfig = [
         { id: 'topic', icon: <TagIcon className="h-6 w-6" />, title: "By Topic", description: "Focus on a specific subject like 'React Hooks'." },
         { id: 'list', icon: <ListIcon className="h-6 w-6" />, title: "By Questions", description: "Paste your own list of questions to practice." },
+        { id: 'notes', icon: <FileTextIcon className="h-6 w-6" />, title: "By Notes", description: "AI will analyze your notes and ask questions on them." },
         { id: 'confidence', icon: <ShieldIcon className="h-6 w-6" />, title: "Build Confidence", description: "AI coach asks questions based on your weak areas." },
         { id: 'fluency', icon: <SpeechBubbleIcon className="h-6 w-6" />, title: "Fluency Practice", description: "Practice delivering your pre-written answers." },
     ];
@@ -254,6 +264,18 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                         required
                     />
                 );
+            case 'notes':
+                return (
+                    <FormTextarea
+                        label="Your Notes"
+                        name="notesContent"
+                        placeholder="Paste your notes here. The AI will generate questions based on this content."
+                        rows={8}
+                        value={notesContent}
+                        onChange={(e) => setNotesContent(e.target.value)}
+                        required
+                    />
+                );
             case 'confidence':
                 return (
                     <div className="space-y-6">
@@ -276,68 +298,69 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                     <div className="space-y-6">
                         <p className="text-gray-300">Enter the questions and your ideal answers. The AI will coach you on delivering them fluently.</p>
                         {qaPairs.map((pair, index) => (
-                            <div key={pair.id} className="p-4 bg-slate-800/50 rounded-lg border border-slate-700 relative">
+                            <div key={pair.id} className="p-4 bg-slate-800/60 border border-slate-700 rounded-lg space-y-4 relative">
+                                <FormInput 
+                                    label={`Question ${index + 1}`} 
+                                    name={`question-${pair.id}`} 
+                                    type="text" 
+                                    placeholder="e.g., Tell me about yourself."
+                                    value={pair.question}
+                                    onChange={(e) => handleQaChange(pair.id, 'question', e.target.value)}
+                                    required
+                                />
+                                <FormTextarea 
+                                    label="Your Ideal Answer" 
+                                    name={`answer-${pair.id}`} 
+                                    placeholder="Write the key points you want to cover."
+                                    rows={3}
+                                    value={pair.answer}
+                                    onChange={(e) => handleQaChange(pair.id, 'answer', e.target.value)}
+                                    required
+                                />
                                 {qaPairs.length > 1 && (
                                     <button
                                         type="button"
                                         onClick={() => handleRemoveQaPair(pair.id)}
                                         className="absolute top-2 right-2 text-gray-500 hover:text-red-400"
-                                        aria-label="Remove Q&A pair"
+                                        aria-label="Remove question and answer pair"
                                     >
-                                        &times;
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
                                     </button>
                                 )}
-                                <div className="space-y-4">
-                                    <FormInput
-                                        label={`Question ${index + 1}`}
-                                        name={`q-${pair.id}`}
-                                        type="text"
-                                        placeholder="Enter the question"
-                                        value={pair.question}
-                                        onChange={(e) => handleQaChange(pair.id, 'question', e.target.value)}
-                                        required
-                                    />
-                                    <FormTextarea
-                                        label={`Your Ideal Answer ${index + 1}`}
-                                        name={`a-${pair.id}`}
-                                        placeholder="Write the answer you want to practice"
-                                        value={pair.answer}
-                                        onChange={(e) => handleQaChange(pair.id, 'answer', e.target.value)}
-                                        required
-                                    />
-                                </div>
                             </div>
                         ))}
                         <button
                             type="button"
                             onClick={handleAddQaPair}
-                            className="w-full text-center py-2 border-2 border-dashed border-slate-600 rounded-lg text-gray-400 hover:border-primary hover:text-primary transition"
+                            className="w-full text-center py-2 text-primary font-semibold border-2 border-dashed border-slate-600 rounded-lg hover:bg-slate-800 hover:border-primary transition-colors"
                         >
-                            + Add Another Q&A Pair
+                            + Add Another Q&A
                         </button>
                     </div>
-                );
-            default:
-                return null;
+                 );
         }
-    };
+    }
+
     return (
         <form onSubmit={handleSubmit} className="space-y-10">
-            <div>
-                <FormInput
-                    label="Your Name"
-                    name="candidateName"
-                    type="text"
-                    placeholder="e.g., John Smith"
+            <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-primary border-b border-slate-700 pb-3 mb-6">Start with Your Name</h3>
+                <FormInput 
+                    label="Your Name" 
+                    name="candidateName" 
+                    type="text" 
+                    placeholder="e.g., Jane Doe"
                     value={candidateName}
                     onChange={(e) => setCandidateName(e.target.value)}
                     required
                 />
             </div>
-
-            <div>
-                <label className="block mb-4 text-base font-medium text-gray-300">Choose Your Practice Mode</label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-primary border-b border-slate-700 pb-3 mb-6">Choose Your Practice Mode</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {practiceOptionsConfig.map(opt => (
                         <OptionCard
                             key={opt.id}
@@ -349,18 +372,20 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                     ))}
                 </div>
             </div>
-            
-            <div key={practiceOption} className="animate-fade-in-up" style={{ animationDuration: '0.5s' }}>
-                {renderContent()}
+
+            <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-primary border-b border-slate-700 pb-3 mb-6">Session Details</h3>
+                <div key={practiceOption} className="animate-fade-in-up" style={{ animationDuration: '0.4s' }}>
+                    <FormSelect label="Interview Type" name="interviewType" value={interviewType} onChange={(e) => setInterviewType(e.target.value)}>
+                        <option>Technical</option>
+                        <option>Behavioral/Managerial</option>
+                        <option>HR</option>
+                    </FormSelect>
+                    <div className="mt-6">
+                        {renderContent()}
+                    </div>
+                </div>
             </div>
-            
-             <div>
-                 <FormSelect label="Focus Area" name="interviewType" value={interviewType} onChange={(e) => setInterviewType(e.target.value)}>
-                    <option>Technical</option>
-                    <option>Behavioral/Managerial</option>
-                    <option>HR</option>
-                </FormSelect>
-             </div>
 
             <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-primary border-b border-slate-700 pb-3 mb-6">Preferences</h3>
@@ -381,9 +406,13 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
                     />
                 </div>
             </div>
-
+            
             <div className="pt-4">
-                <button type="submit" disabled={isButtonDisabled()} className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">
+                <button 
+                    type="submit" 
+                    disabled={isButtonDisabled()}
+                    className="w-full bg-primary text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-500 transition-transform transform hover:scale-105 duration-300 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                     Confirm & Proceed
                 </button>
             </div>
