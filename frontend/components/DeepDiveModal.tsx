@@ -10,6 +10,54 @@ interface DeepDiveModalProps {
     answer: string;
 }
 
+const formatFeedback = (text: string): string => {
+    const lines = text.split('\n');
+    let htmlLines: string[] = [];
+    let inList = false;
+
+    lines.forEach(line => {
+        // Handle bold within any line
+        let processedLine = line.replace(/\*\*\*\*(.*?)\*\*\*\*/g, '<strong class="font-bold text-white">$1</strong>');
+
+        // Handle headings
+        if (processedLine.startsWith('### ')) {
+            if (inList) {
+                htmlLines.push('</ul>');
+                inList = false;
+            }
+            htmlLines.push(`<h4 class="text-md font-semibold text-primary mt-4 mb-2">${processedLine.substring(4)}</h4>`);
+            return;
+        }
+
+        // Handle bullet points
+        if (processedLine.trim().startsWith('* ')) {
+            if (!inList) {
+                htmlLines.push('<ul class="list-disc list-inside space-y-1 my-2 text-gray-300">');
+                inList = true;
+            }
+            htmlLines.push(`<li>${processedLine.trim().substring(2)}</li>`);
+        } else {
+            // If we were in a list and this line is not a list item, end the list
+            if (inList) {
+                htmlLines.push('</ul>');
+                inList = false;
+            }
+            
+            // Handle paragraphs
+            if (processedLine.trim().length > 0) {
+                htmlLines.push(`<p class="my-2 text-gray-300">${processedLine}</p>`);
+            }
+        }
+    });
+
+    // Close list if it's the last thing in the feedback
+    if (inList) {
+        htmlLines.push('</ul>');
+    }
+
+    return htmlLines.join('');
+};
+
 const DeepDiveModal: React.FC<DeepDiveModalProps> = ({ isOpen, onClose, question, answer }) => {
     const [query, setQuery] = useState('');
     const [feedback, setFeedback] = useState<string | null>(null);
@@ -111,9 +159,9 @@ const DeepDiveModal: React.FC<DeepDiveModalProps> = ({ isOpen, onClose, question
                             )}
                             {error && <p className="text-red-400">{error}</p>}
                             {feedback && (
-                                <div className="prose prose-invert prose-sm max-w-none text-gray-300 space-y-2">
+                                <div>
                                     <h4 className="font-semibold text-primary">Coaching Feedback:</h4>
-                                    <div dangerouslySetInnerHTML={{ __html: feedback.replace(/\n/g, '<br />') }} />
+                                    <div className="text-sm" dangerouslySetInnerHTML={{ __html: formatFeedback(feedback) }} />
                                 </div>
                             )}
                         </div>

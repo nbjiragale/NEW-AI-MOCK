@@ -16,8 +16,10 @@ const TranscriptItemView: React.FC<{ item: TranscriptItem }> = ({ item }) => {
             <div className={`rounded-lg px-3 py-2 max-w-[90%] transition-colors duration-300 ${
                 speaker === 'You' ? 'bg-primary' : 'bg-slate-700'
             }`}>
-                <p className="text-xs font-bold mb-1 text-white">{speaker}</p>
-                <p className={`text-sm break-words ${isInterim ? 'text-gray-300' : 'text-white'}`}>{text}</p>
+                <p className={`text-sm break-words ${isInterim ? 'text-gray-300' : 'text-white'}`}>
+                    <span className="block text-xs font-bold mb-1 text-white">{speaker}</span>
+                    {text}
+                </p>
             </div>
         </div>
     );

@@ -25,8 +25,13 @@ export const getDeepDiveFeedback = async (
         **Your Task:**
         1.  Carefully analyze the user's answer in the context of the original question.
         2.  Directly address the user's query. Provide actionable advice, suggestions, or alternative phrasing.
-        3.  Keep your feedback focused and concise. Use formatting like bullet points or bold text to make your advice easy to digest.
+        3.  Keep your feedback focused and concise. Use the specified formatting to make your advice easy to digest.
         4.  Maintain a supportive and professional tone.
+        
+        **Formatting Rules (VERY IMPORTANT):**
+        - To make text bold, wrap it in four asterisks. For example: "****This is bold.****"
+        - To create a heading, start a line with "### ". For example: "### Suggested Alternative"
+        - For bullet points, start each line with an asterisk followed by a space. For example: "* This is a bullet point."
     `;
 
     try {
