@@ -1,8 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useInterview } from '../contexts/InterviewContext';
 import { checkDetailsConsistency, validateCompany, generateInterviewQuestions } from '../services/geminiStartInterview';
+
+import { UserIcon } from '../icons/UserIcon';
+import { BuildingIcon } from '../icons/BuildingIcon';
+import { ClipboardListIcon } from '../icons/ClipboardListIcon';
+import { UsersIcon } from '../icons/UsersIcon';
+import { FileTextIcon } from '../icons/FileTextIcon';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
-import { ChevronRightIcon } from '../icons/ChevronRightIcon';
 import { XCircleIcon } from '../icons/XCircleIcon';
 
 const interviewerNames = [
@@ -35,62 +40,71 @@ const getInterviewerDetails = (setupData: any) => {
   return [{ name, role }];
 };
 
-interface LogEntry {
-  id: number;
-  text: string;
-  status: 'running' | 'done' | 'error' | 'paused';
+
+const Spinner: React.FC = () => (
+    <div className="h-5 w-5 border-2 border-slate-500 border-t-primary rounded-full animate-spin"></div>
+);
+
+interface Step {
+    id: number;
+    text: string;
+    icon: React.ReactNode;
+    status: 'pending' | 'running' | 'done' | 'error';
+    detail?: string;
 }
 
-const useTypingEffect = (text: string, speed = 20, start = true) => {
-    const [displayedText, setDisplayedText] = useState('');
-    useEffect(() => {
-        if (!start || !text) {
-            setDisplayedText('');
-            return;
-        };
-        setDisplayedText('');
-        let i = 0;
-        const intervalId = setInterval(() => {
-            if (i < text.length) {
-                setDisplayedText(prev => prev + text.charAt(i));
-                i++;
-            } else {
-                clearInterval(intervalId);
-            }
-        }, speed);
-        return () => clearInterval(intervalId);
-    }, [text, speed, start]);
-    return displayedText;
-};
-
-const LogItem: React.FC<{ entry: LogEntry }> = ({ entry }) => {
-    const displayText = useTypingEffect(entry.text, 20, entry.status === 'running');
-    const Icon = () => {
-        switch (entry.status) {
+const StepItem: React.FC<{ step: Step }> = ({ step }) => {
+    const getStatusIcon = () => {
+        switch(step.status) {
+            case 'running': return <Spinner />;
             case 'done': return <CheckCircleIcon className="w-5 h-5 text-green-400" />;
             case 'error': return <XCircleIcon className="w-5 h-5 text-red-400" />;
-            default: return <ChevronRightIcon className="w-5 h-5 text-primary" />;
+            case 'pending':
+            default: return <div className="h-5 w-5 rounded-full border-2 border-slate-600"></div>;
         }
     };
+    
     return (
-        <div className="flex items-start gap-3 font-mono text-base animate-fade-in-up" style={{ animationDuration: '0.3s' }}>
-            <div className="flex-shrink-0 pt-0.5"><Icon /></div>
-            <p className={`${entry.status === 'error' ? 'text-red-400' : 'text-gray-300'}`}>
-                {entry.status === 'running' ? displayText : entry.text}
-                {entry.status === 'running' && <span className="inline-block w-2 h-4 bg-primary ml-1 animate-blink"></span>}
-            </p>
+        <div className={`flex items-start gap-4 transition-opacity duration-500 ${step.status === 'pending' ? 'opacity-50' : 'opacity-100'}`}>
+            <div className="flex-shrink-0">{step.icon}</div>
+            <div className="flex-grow">
+                <p className={`font-medium transition-colors ${step.status === 'done' ? 'text-white' : 'text-gray-300'} ${step.status === 'error' ? 'text-red-400' : ''}`}>{step.text}</p>
+                {step.detail && <p className="text-sm text-gray-400 mt-1">{step.detail}</p>}
+            </div>
+            <div className="flex-shrink-0 w-5 h-5">{getStatusIcon()}</div>
         </div>
     );
 };
 
+const InterviewerCard: React.FC<{ name: string, role: string, index: number }> = ({ name, role, index }) => (
+    <div className="flex items-center gap-3 bg-slate-800/50 p-3 rounded-lg animate-fade-in-up" style={{ animationDelay: `${index * 150}ms` }}>
+        <div className="h-10 w-10 bg-slate-700 rounded-full flex items-center justify-center ring-2 ring-slate-600">
+            <span className="text-lg font-bold text-primary">{name.charAt(0)}</span>
+        </div>
+        <div>
+            <p className="font-semibold text-white">{name}</p>
+            <p className="text-sm text-gray-400">{role}</p>
+        </div>
+    </div>
+);
+
 const BeforeInterviewPage: React.FC = () => {
     const { setupData, backToSetup, startInterview } = useInterview();
 
-    const [logs, setLogs] = useState<LogEntry[]>([]);
+    const initialSteps: Step[] = [
+        { id: 1, text: "Analyzing Candidate Profile", icon: <UserIcon className="w-6 h-6 text-primary" />, status: 'pending' },
+        ...(setupData?.targetCompany ? [{ id: 2, text: `Verifying Target Company: ${setupData.targetCompany}`, icon: <BuildingIcon className="w-6 h-6 text-primary" />, status: 'pending' as 'pending' }] : []),
+        { id: 3, text: `Tailoring Questions for ${setupData?.role || 'Role'}`, icon: <ClipboardListIcon className="w-6 h-6 text-primary" />, status: 'pending' },
+        { id: 4, text: "Assigning Interview Panel", icon: <UsersIcon className="w-6 h-6 text-primary" />, status: 'pending' },
+        { id: 5, text: "Finalizing Session Brief", icon: <FileTextIcon className="w-6 h-6 text-primary" />, status: 'pending' },
+    ];
+    
+    const [steps, setSteps] = useState<Step[]>(initialSteps);
+    const [interviewersToShow, setInterviewersToShow] = useState<any[]>([]);
     const [processStatus, setProcessStatus] = useState<'running' | 'paused' | 'error' | 'finished'>('running');
     const [pauseReason, setPauseReason] = useState<'inconsistent' | 'invalid_company' | null>(null);
     const [countdown, setCountdown] = useState(5);
-    const [showConsole, setShowConsole] = useState(true);
+    const [showPreparation, setShowPreparation] = useState(true);
 
     const interviewerDetailsRef = useRef(getInterviewerDetails(setupData));
     const generatedQuestionsRef = useRef<any>(null);
@@ -98,119 +112,98 @@ const BeforeInterviewPage: React.FC = () => {
 
     const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-    const addLog = (text: string, status: LogEntry['status'] = 'running') => {
-        setLogs(prev => [...prev.map(l => ({ ...l, status: l.status === 'running' ? 'paused' : l.status })), { id: Date.now(), text, status }]);
-    };
-    const updateLastLog = (text: string, status: LogEntry['status']) => {
-        setLogs(prev => {
-            const newLogs = [...prev];
-            if (newLogs.length > 0) {
-                newLogs[newLogs.length - 1] = { ...newLogs[newLogs.length - 1], text, status };
-            }
-            return newLogs;
-        });
+    const updateStep = (id: number, newStatus: Step['status'], detail?: string) => {
+        setSteps(prev => prev.map(s => s.id === id ? { ...s, status: newStatus, detail } : s));
     };
 
-    const runProcess = async (skipCompanyCheck = false) => {
+    const runProcess = useCallback(async (skipCompanyCheck = false) => {
         setProcessStatus('running');
         setPauseReason(null);
-        
+        setInterviewersToShow([]);
+        setSteps(initialSteps.map(s => ({ ...s, status: 'pending' })));
+        await delay(500);
+
         try {
             // --- Consistency Check ---
-            addLog(`First, I'm reviewing your profile for the "${setupData.role}" role...`);
-            await delay(1500);
-            updateLastLog(`First, I'm reviewing your profile for the "${setupData.role}" role...`, 'paused');
-            
+            updateStep(1, 'running');
             const consistencyResult = await checkDetailsConsistency(setupData);
+            await delay(1000);
             if (!consistencyResult.isConsistent) {
-                updateLastLog(`Hmm, something seems off. ${consistencyResult.reasoning}`, 'error');
+                updateStep(1, 'error', consistencyResult.reasoning);
                 setProcessStatus('paused');
                 setPauseReason('inconsistent');
                 return;
             }
-            updateLastLog('Looks good. Your profile details are consistent.', 'done');
-            await delay(1000);
+            updateStep(1, 'done');
 
             // --- Company Check ---
-            if (setupData.targetCompany && setupData.type !== 'Practice Mode' && !skipCompanyCheck) {
-                addLog(`Now, I'm quickly verifying the company: "${setupData.targetCompany}"...`);
-                await delay(1500);
+            const companyStep = steps.find(s => s.id === 2);
+            if (companyStep && !skipCompanyCheck) {
+                updateStep(2, 'running');
                 const companyResult = await validateCompany(setupData.targetCompany);
+                await delay(1000);
                 if (!companyResult.companyExists) {
-                    updateLastLog(`I'm having a bit of trouble with the company name. ${companyResult.reasoning}`, 'error');
+                    updateStep(2, 'error', companyResult.reasoning);
                     setProcessStatus('paused');
                     setPauseReason('invalid_company');
                     return;
                 }
-                updateLastLog('Company verified. Great!', 'done');
-                await delay(1000);
+                updateStep(2, 'done');
             }
+            if (companyStep && skipCompanyCheck) updateStep(2, 'done', 'Verification skipped by user.');
 
             // --- Question Generation ---
-            addLog('Alright, everything checks out. Time to prepare our conversation.');
-            await delay(1500);
-            updateLastLog('Alright, everything checks out. Time to prepare our conversation.', 'done');
-
-            addLog(`I'm tailoring questions for a candidate with ${setupData.experience || 'your specified'} years of experience.`);
-            await delay(1500);
-            updateLastLog(`I'm tailoring questions for a candidate with ${setupData.experience || 'your specified'} years of experience.`, 'done');
-            
-            addLog('Generating a personalized set of interview questions...');
-            
+            updateStep(3, 'running');
             let questions;
             if (setupData?.practiceType === 'By List of Questions') {
-                questions = { 
-                    theoryQuestions: setupData.questionList.split('\n').filter((q: string) => q.trim() !== ''),
-                    handsOnQuestions: []
-                };
+                questions = { theoryQuestions: setupData.questionList.split('\n').filter((q: string) => q.trim() !== ''), handsOnQuestions: [] };
             } else if (setupData?.practiceType === 'Fluency Practice') {
-                questions = {
-                    theoryQuestions: setupData.qaPairs.map((p: any) => p.question),
-                    handsOnQuestions: []
-                };
+                questions = { theoryQuestions: setupData.qaPairs.map((p: any) => p.question), handsOnQuestions: [] };
             } else {
                 questions = await generateInterviewQuestions(setupData);
             }
             generatedQuestionsRef.current = questions;
-            await delay(2000);
-            updateLastLog('The questions are ready.', 'done');
+            await delay(1500);
+            updateStep(3, 'done');
             
-            addLog('Finalizing the session setup...');
+            // --- Assign Panel ---
+            updateStep(4, 'running');
             await delay(1000);
-            updateLastLog('All set! The interview will begin shortly.', 'done');
+            updateStep(4, 'done');
+            setInterviewersToShow(interviewerDetailsRef.current);
+
+            // --- Finalize ---
+            updateStep(5, 'running');
+            await delay(800);
+            updateStep(5, 'done');
             setProcessStatus('finished');
 
         } catch (err) {
             console.error("Error during pre-interview setup:", err);
             const message = err instanceof Error ? err.message : 'An unknown error occurred.';
-            updateLastLog(`A system error occurred: ${message}`, 'error');
+            const currentStep = steps.find(s => s.status === 'running');
+            if (currentStep) {
+                updateStep(currentStep.id, 'error', message);
+            }
             setProcessStatus('error');
         }
-    };
-    
-    const startPreparation = async (isRetry = false) => {
-        const initialMessage = isRetry ? "Okay, let's try that again..." : "Okay, let's get you set up...";
-        setLogs([]);
-        setProcessStatus('running');
-        setPauseReason(null);
-        
-        await delay(200);
-        
-        addLog(initialMessage);
-        await delay(1500);
-        updateLastLog(initialMessage, 'done');
-        
-        runProcess();
-    };
+    }, [setupData, initialSteps]);
+
+    useEffect(() => {
+        if (!processingStateRef.current.hasStarted) {
+            processingStateRef.current.hasStarted = true;
+            runProcess();
+        }
+    }, [runProcess]);
     
     useEffect(() => {
         if (processStatus === 'finished') {
-            setTimeout(() => setShowConsole(false), 1000); // Allow time to read final log
+            setTimeout(() => setShowPreparation(false), 1500);
         }
     }, [processStatus]);
 
     useEffect(() => {
-        if (!showConsole) {
+        if (!showPreparation) {
             document.title = `Starting in ${countdown}...`;
             if (countdown > 0) {
                 const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
@@ -220,64 +213,55 @@ const BeforeInterviewPage: React.FC = () => {
             }
         }
         return () => { document.title = 'AI Mock Interview'; };
-    }, [showConsole, countdown, startInterview]);
+    }, [showPreparation, countdown, startInterview]);
     
-    useEffect(() => {
-        if (!processingStateRef.current.hasStarted) {
-            processingStateRef.current.hasStarted = true;
-            startPreparation(false);
-        }
-    }, []);
-
-    const primaryInterviewer = interviewerDetailsRef.current[0];
+    const handleRetry = () => {
+        runProcess(pauseReason === 'invalid_company');
+    };
 
     return (
-        <section className="min-h-screen flex items-center justify-center py-12 px-4 relative overflow-hidden">
+        <section className="min-h-screen flex items-center justify-center py-12 px-4 relative overflow-hidden bg-dark">
             <div className="absolute inset-0 bg-grid-slate-800/[0.1] -z-10"></div>
             
-            {showConsole && (
-                <div className="w-full max-w-3xl mx-auto animate-fade-in-up">
-                    <div className="relative bg-slate-900/70 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-xl">
-                        <div className="p-6 border-b border-slate-700 flex items-center gap-2">
-                            <span className="h-3.5 w-3.5 bg-red-500 rounded-full"></span>
-                            <span className="h-3.5 w-3.5 bg-yellow-500 rounded-full"></span>
-                            <span className="h-3.5 w-3.5 bg-green-500 rounded-full"></span>
-                            <p className="text-center flex-grow text-gray-400 font-mono text-md">Interview is setting up!</p>
+            {showPreparation ? (
+                <div className="w-full max-w-2xl mx-auto animate-fade-in-up">
+                    <div className="bg-slate-900/70 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-xl">
+                        <div className="p-6 text-center border-b border-slate-700">
+                            <h2 className="text-2xl font-bold text-white">Preparing Your Session</h2>
+                            <p className="text-gray-400 mt-2">Your personalized interview is being configured...</p>
                         </div>
-                        <div className="p-6 md:p-8 h-80 overflow-y-auto space-y-3">
-                            {logs.map(log => <LogItem key={log.id} entry={log} />)}
+
+                        <div className="p-6 md:p-8 space-y-6">
+                            {steps.map(step => <StepItem key={step.id} step={step} />)}
+                            
+                            {interviewersToShow.length > 0 && (
+                                <div className="pt-4 border-t border-slate-800 mt-6">
+                                    <h3 className="text-lg font-semibold text-primary mb-4">Your Interview Panel:</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {interviewersToShow.map((interviewer, i) => (
+                                            <InterviewerCard key={interviewer.name} {...interviewer} index={i} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
+                        
                         {(processStatus === 'paused' || processStatus === 'error') && (
-                             <div className="p-4 border-t border-slate-700 bg-slate-800/50 rounded-b-2xl">
-                                {processStatus === 'paused' && (
-                                    <div className="flex flex-col sm:flex-row gap-4">
-                                        <button onClick={backToSetup} className="flex-1 bg-slate-600 text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-slate-500 transition-colors">Edit Details</button>
-                                        <button onClick={() => runProcess(pauseReason === 'invalid_company')} className="flex-1 bg-primary text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-blue-500 transition-colors">
-                                            Proceed Anyway
-                                        </button>
-                                    </div>
-                                )}
-                                {processStatus === 'error' && (
-                                    <div className="flex flex-col sm:flex-row gap-4">
-                                        <button onClick={backToSetup} className="flex-1 bg-slate-600 text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-slate-500 transition-colors">Go Back & Edit</button>
-                                        <button onClick={() => startPreparation(true)} className="flex-1 bg-primary text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-blue-500 transition-colors">
-                                            Try Again
-                                        </button>
-                                    </div>
-                                )}
+                             <div className="p-4 border-t border-slate-700 bg-slate-800/50 rounded-b-2xl animate-fade-in-up">
+                                <div className="flex flex-col sm:flex-row gap-4">
+                                    <button onClick={backToSetup} className="flex-1 bg-slate-600 text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-slate-500 transition-colors">Edit Details</button>
+                                    <button onClick={handleRetry} className="flex-1 bg-primary text-white font-semibold py-2.5 px-5 rounded-lg hover:bg-blue-500 transition-colors">
+                                        {processStatus === 'error' ? 'Try Again' : 'Proceed Anyway'}
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
                 </div>
-            )}
-            
-            {!showConsole && (
-                 <div className="text-center flex flex-col items-center animate-fade-in-up">
-                    <div className="relative mb-6 h-32 w-32 bg-slate-800 rounded-full flex items-center justify-center ring-8 ring-slate-700/50">
-                        <span className="text-5xl font-bold text-primary">{primaryInterviewer.name.charAt(0)}</span>
-                    </div>
-                    <h2 className="text-3xl font-bold text-white mb-2">{primaryInterviewer.name} is ready.</h2>
-                    <p className="text-gray-300 text-lg mb-8">Your session will begin in...</p>
+            ) : (
+                <div className="text-center flex flex-col items-center animate-fade-in-up">
+                    <h2 className="text-3xl font-bold text-white mb-2">Your Interview is Ready.</h2>
+                    <p className="text-gray-300 text-lg mb-8">The session will begin in...</p>
                     <p className="text-8xl font-bold text-white font-mono animate-pop-in" key={countdown}>{countdown}</p>
                 </div>
             )}
