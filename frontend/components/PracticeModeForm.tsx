@@ -1,12 +1,20 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { TagIcon } from '../icons/TagIcon';
 import { ListIcon } from '../icons/ListIcon';
 import { ShieldIcon } from '../icons/ShieldIcon';
 import { SpeechBubbleIcon } from '../icons/SpeechBubbleIcon';
 import { FileTextIcon } from '../icons/FileTextIcon';
 
+// Import the new modular components
+import TopicPractice from './practice_modes/TopicPractice';
+import ListPractice from './practice_modes/ListPractice';
+import NotesPractice from './practice_modes/NotesPractice';
+import ConfidencePractice from './practice_modes/ConfidencePractice';
+import FluencyPractice from './practice_modes/FluencyPractice';
+
 type PracticeOption = 'topic' | 'list' | 'notes' | 'confidence' | 'fluency';
 
+// Reusable form components that were in the original file
 const FormInput: React.FC<{ label: string; type: string; placeholder: string; name: string, value: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, required?: boolean }> = ({ label, type, placeholder, name, value, onChange, required = false }) => (
     <div>
         <label htmlFor={name} className="block mb-2 text-base font-medium text-gray-300">{label}</label>
@@ -20,22 +28,6 @@ const FormInput: React.FC<{ label: string; type: string; placeholder: string; na
             placeholder={placeholder}
             required={required}
         />
-    </div>
-);
-
-const FormTextarea: React.FC<{ label: string; placeholder: string; name: string, rows?: number, value: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, required?: boolean }> = ({ label, placeholder, name, rows = 4, value, onChange, required = false }) => (
-    <div>
-        <label htmlFor={name} className="block mb-2 text-base font-medium text-gray-300">{label}</label>
-        <textarea
-            name={name}
-            id={name}
-            rows={rows}
-            value={value}
-            onChange={onChange}
-            className="bg-slate-800 border border-slate-700 text-white text-base rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 transition"
-            placeholder={placeholder}
-            required={required}
-        ></textarea>
     </div>
 );
 
@@ -80,76 +72,50 @@ interface PracticeModeFormProps {
 }
 
 const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubmit }) => {
+    // Determine initial state from props
     const getInitialOption = (): PracticeOption => {
         if (!initialData) return 'topic';
-        if (initialData.practiceType === 'By Topic Name') return 'topic';
-        if (initialData.practiceType === 'By List of Questions') return 'list';
-        if (initialData.practiceType === 'Build Confidence') return 'confidence';
-        if (initialData.practiceType === 'Fluency Practice') return 'fluency';
-        if (initialData.practiceType === 'By Notes') return 'notes';
-        return 'topic';
-    };
-
-    const getInitialConfidenceAnswers = (): Record<number, string> => {
-        const defaultAnswers = { 0: '', 1: '', 2: '', 3: '' };
-        if (initialData?.practiceType !== 'Build Confidence') {
-            return defaultAnswers;
+        switch (initialData.practiceType) {
+            case 'By Topic Name': return 'topic';
+            case 'By List of Questions': return 'list';
+            case 'By Notes': return 'notes';
+            case 'Build Confidence': return 'confidence';
+            case 'Fluency Practice': return 'fluency';
+            default: return 'topic';
         }
-        const answers: Record<number, string> = {};
-        initialData.confidenceAnswers.forEach((item: { question: string, answer: string }, index: number) => {
-            answers[index] = item.answer;
-        });
-        return { ...defaultAnswers, ...answers };
     };
-
+    
+    // Common state
     const [practiceOption, setPracticeOption] = useState<PracticeOption>(getInitialOption());
     const [candidateName, setCandidateName] = useState(initialData?.candidateName || '');
     const [interviewType, setInterviewType] = useState(initialData?.interviewType || 'Technical');
+    const [needsReport, setNeedsReport] = useState(initialData?.needsReport ?? true);
+    const [recordSession, setRecordSession] = useState(initialData?.recordSession ?? true);
+
+    // State for each practice mode
     const [topicName, setTopicName] = useState(initialData?.practiceType === 'By Topic Name' ? initialData.topicName : '');
     const [questionList, setQuestionList] = useState(initialData?.practiceType === 'By List of Questions' ? initialData.questionList : '');
     const [notesContent, setNotesContent] = useState(initialData?.practiceType === 'By Notes' ? initialData.notesContent : '');
-    const [confidenceAnswers, setConfidenceAnswers] = useState<Record<number, string>>(getInitialConfidenceAnswers());
-    const [needsReport, setNeedsReport] = useState(initialData?.needsReport ?? true);
-    const [recordSession, setRecordSession] = useState(initialData?.recordSession ?? true);
-    
+    const [confidenceAnswers, setConfidenceAnswers] = useState(initialData?.practiceType === 'Build Confidence' ? 
+        initialData.confidenceAnswers.reduce((acc: any, item: { question: string, answer: string }, index: number) => {
+            acc[index] = item.answer;
+            return acc;
+        }, {}) : { 0: '', 1: '', 2: '', 3: '' }
+    );
     const [qaPairs, setQaPairs] = useState(
         initialData?.practiceType === 'Fluency Practice' ? initialData.qaPairs.map((p: any, i: number) => ({ ...p, id: i + 1 })) : [{ id: 1, question: '', answer: '' }]
     );
-    const nextId = useRef(qaPairs.length + 2);
-
-    const handleAddQaPair = () => {
-        setQaPairs(prev => [...prev, { id: nextId.current++, question: '', answer: '' }]);
-    };
-
-    const handleRemoveQaPair = (id: number) => {
-        setQaPairs(prev => prev.filter(pair => pair.id !== id));
-    };
-
-    const handleQaChange = (id: number, field: 'question' | 'answer', value: string) => {
-        setQaPairs(prev => prev.map(pair => pair.id === id ? { ...pair, [field]: value } : pair));
-    };
-
-    const handleConfidenceChange = (index: number, value: string) => {
-        setConfidenceAnswers(prev => ({...prev, [index]: value}));
-    };
-
+    
+    // Derived state - check if form can be submitted
     const isButtonDisabled = () => {
-        if (!candidateName.trim()) {
-            return true;
-        }
+        if (!candidateName.trim()) return true;
         switch (practiceOption) {
-            case 'topic':
-                return !topicName.trim();
-            case 'list':
-                return !questionList.trim();
-            case 'notes':
-                return !notesContent.trim();
-            case 'confidence':
-                return Object.values(confidenceAnswers).some((answer: string) => !answer.trim());
-            case 'fluency':
-                return qaPairs.length === 0 || qaPairs.some(pair => !pair.question.trim() || !pair.answer.trim());
-            default:
-                return true;
+            case 'topic': return !topicName.trim();
+            case 'list': return !questionList.trim();
+            case 'notes': return !notesContent.trim();
+            case 'confidence': return Object.values(confidenceAnswers).some((answer: string) => !answer.trim());
+            case 'fluency': return qaPairs.length === 0 || qaPairs.some(pair => !pair.question.trim() || !pair.answer.trim());
+            default: return true;
         }
     };
     
@@ -157,45 +123,45 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
         e.preventDefault();
         
         let practiceTypeLabel = 'Build Confidence';
+        let practiceData = {};
+        
         switch (practiceOption) {
-            case 'topic': practiceTypeLabel = 'By Topic Name'; break;
-            case 'list': practiceTypeLabel = 'By List of Questions'; break;
-            case 'fluency': practiceTypeLabel = 'Fluency Practice'; break;
-            case 'notes': practiceTypeLabel = 'By Notes'; break;
+            case 'topic':
+                practiceTypeLabel = 'By Topic Name';
+                practiceData = { topicName };
+                break;
+            case 'list':
+                practiceTypeLabel = 'By List of Questions';
+                practiceData = { questionList };
+                break;
+            case 'notes':
+                practiceTypeLabel = 'By Notes';
+                practiceData = { notesContent };
+                break;
+            case 'confidence':
+                practiceTypeLabel = 'Build Confidence';
+                practiceData = { confidenceAnswers: Object.entries(confidenceAnswers).map(([key, value]) => ({ question: confidenceQuestions[parseInt(key)], answer: value }))};
+                break;
+            case 'fluency':
+                practiceTypeLabel = 'Fluency Practice';
+                practiceData = { qaPairs: qaPairs.map(({ question, answer }) => ({ question, answer })) };
+                break;
         }
 
-        const baseData = {
-            candidateName,
+        const fullData = {
             type: 'Practice Mode',
+            candidateName,
             interviewType,
             practiceType: practiceTypeLabel,
             needsReport,
             recordSession,
+            ...practiceData,
         };
-
-        let practiceData = {};
-
-        switch (practiceOption) {
-            case 'topic':
-                practiceData = { topicName };
-                break;
-            case 'list':
-                practiceData = { questionList };
-                break;
-            case 'notes':
-                practiceData = { notesContent };
-                break;
-            case 'confidence':
-                practiceData = { confidenceAnswers: Object.entries(confidenceAnswers).map(([key, value]) => ({ question: confidenceQuestions[parseInt(key)], answer: value }))};
-                break;
-            case 'fluency':
-                practiceData = { qaPairs: qaPairs.map(({ question, answer }) => ({ question, answer })) };
-                break;
-        }
         
-        onSubmit({ ...baseData, ...practiceData });
+        onSubmit(fullData);
     };
 
+    // UI Components
     const practiceOptionsConfig = [
         { id: 'topic', icon: <TagIcon className="h-6 w-6" />, title: "By Topic", description: "Focus on a specific subject like 'React Hooks'." },
         { id: 'list', icon: <ListIcon className="h-6 w-6" />, title: "By Questions", description: "Paste your own list of questions to practice." },
@@ -212,14 +178,7 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
     }> = ({ option, icon, title, description }) => (
         <label
             htmlFor={`practice-option-${option}`}
-            className={`
-                p-4 border-2 rounded-lg cursor-pointer transition-all duration-300
-                flex items-center gap-4
-                ${practiceOption === option
-                    ? 'bg-slate-700/50 border-primary shadow-lg shadow-primary/10'
-                    : 'bg-slate-800/50 border-slate-700 hover:border-slate-500'
-                }
-            `}
+            className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-300 flex items-center gap-4 ${practiceOption === option ? 'bg-slate-700/50 border-primary shadow-lg shadow-primary/10' : 'bg-slate-800/50 border-slate-700 hover:border-slate-500'}`}
         >
             <input
                 type="radio"
@@ -240,106 +199,12 @@ const PracticeModeForm: React.FC<PracticeModeFormProps> = ({ initialData, onSubm
 
     const renderContent = () => {
         switch (practiceOption) {
-            case 'topic':
-                return (
-                    <FormInput
-                        label="Topic Name"
-                        name="topicName"
-                        type="text"
-                        placeholder="e.g., React Hooks, SQL Joins"
-                        value={topicName}
-                        onChange={(e) => setTopicName(e.target.value)}
-                        required
-                    />
-                );
-            case 'list':
-                return (
-                    <FormTextarea
-                        label="Your Question List"
-                        name="questionList"
-                        placeholder="Paste one question per line..."
-                        rows={6}
-                        value={questionList}
-                        onChange={(e) => setQuestionList(e.target.value)}
-                        required
-                    />
-                );
-            case 'notes':
-                return (
-                    <FormTextarea
-                        label="Your Notes"
-                        name="notesContent"
-                        placeholder="Paste your notes here. The AI will generate questions based on this content."
-                        rows={8}
-                        value={notesContent}
-                        onChange={(e) => setNotesContent(e.target.value)}
-                        required
-                    />
-                );
-            case 'confidence':
-                return (
-                    <div className="space-y-6">
-                        <p className="text-gray-300">Answer these questions honestly to help the AI tailor the session to build your confidence.</p>
-                        {confidenceQuestions.map((q, index) => (
-                            <FormTextarea
-                                key={index}
-                                label={q}
-                                name={`confidence-answer-${index}`}
-                                placeholder="Your reflection here..."
-                                value={confidenceAnswers[index] || ''}
-                                onChange={(e) => handleConfidenceChange(index, e.target.value)}
-                                required
-                            />
-                        ))}
-                    </div>
-                );
-            case 'fluency':
-                 return (
-                    <div className="space-y-6">
-                        <p className="text-gray-300">Enter the questions and your ideal answers. The AI will coach you on delivering them fluently.</p>
-                        {qaPairs.map((pair, index) => (
-                            <div key={pair.id} className="p-4 bg-slate-800/60 border border-slate-700 rounded-lg space-y-4 relative">
-                                <FormInput 
-                                    label={`Question ${index + 1}`} 
-                                    name={`question-${pair.id}`} 
-                                    type="text" 
-                                    placeholder="e.g., Tell me about yourself."
-                                    value={pair.question}
-                                    onChange={(e) => handleQaChange(pair.id, 'question', e.target.value)}
-                                    required
-                                />
-                                <FormTextarea 
-                                    label="Your Ideal Answer" 
-                                    name={`answer-${pair.id}`} 
-                                    placeholder="Write the key points you want to cover."
-                                    rows={3}
-                                    value={pair.answer}
-                                    onChange={(e) => handleQaChange(pair.id, 'answer', e.target.value)}
-                                    required
-                                />
-                                {qaPairs.length > 1 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleRemoveQaPair(pair.id)}
-                                        className="absolute top-2 right-2 text-gray-500 hover:text-red-400"
-                                        aria-label="Remove question and answer pair"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                        <button
-                            type="button"
-                            onClick={handleAddQaPair}
-                            className="w-full text-center py-2 text-primary font-semibold border-2 border-dashed border-slate-600 rounded-lg hover:bg-slate-800 hover:border-primary transition-colors"
-                        >
-                            + Add Another Q&A
-                        </button>
-                    </div>
-                 );
+            case 'topic': return <TopicPractice value={topicName} onChange={setTopicName} />;
+            case 'list': return <ListPractice value={questionList} onChange={setQuestionList} />;
+            case 'notes': return <NotesPractice value={notesContent} onChange={setNotesContent} />;
+            case 'confidence': return <ConfidencePractice initialValues={confidenceAnswers} onChange={setConfidenceAnswers} />;
+            case 'fluency': return <FluencyPractice initialPairs={qaPairs} onChange={setQaPairs} />;
+            default: return null;
         }
     }
 
