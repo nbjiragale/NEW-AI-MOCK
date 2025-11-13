@@ -55,11 +55,19 @@ function createBlob(data: Float32Array): Blob {
 
 // --- Live Session Service ---
 
+interface TranscriptItem {
+    speaker: string;
+    text: string;
+    id: number;
+}
+
 interface InitiateLiveSessionParams {
   stream: MediaStream;
   systemInstruction: string;
   onTranscriptionUpdate: (update: { speaker: 'Interviewer' | 'You'; text: string }) => void;
   onAudioFinished: () => void;
+  onError: (e: ErrorEvent) => void;
+  history: Omit<TranscriptItem, 'id'>[];
 }
 
 export const initiateLiveSession = async ({
@@ -67,6 +75,8 @@ export const initiateLiveSession = async ({
   systemInstruction,
   onTranscriptionUpdate,
   onAudioFinished,
+  onError,
+  history
 }: InitiateLiveSessionParams): Promise<{ close: () => void; askForCandidateQuestions: () => void; }> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
@@ -79,6 +89,17 @@ export const initiateLiveSession = async ({
   let currentInputTranscription = '';
   let currentOutputTranscription = '';
   let isClosing = false; // Flag to prevent multiple close calls
+
+  let finalSystemInstruction = systemInstruction;
+  if (history.length > 0) {
+      const historyText = history.map(item => `${item.speaker}: ${item.text}`).join('\n');
+      finalSystemInstruction += `\n\n---
+PREVIOUS CONVERSATION HISTORY (for your context):
+${historyText}
+\n---\n
+You were disconnected. Please resume the conversation naturally from where you left off. The last thing said was: "${history[history.length - 1].text}".`;
+  }
+
 
   const sessionPromise = ai.live.connect({
     model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -148,6 +169,7 @@ export const initiateLiveSession = async ({
       },
       onerror: (e: ErrorEvent) => {
         console.error('Live session error:', e);
+        onError(e);
       },
       onclose: (e: CloseEvent) => {
         console.log('Live session closed.');
@@ -160,7 +182,7 @@ export const initiateLiveSession = async ({
       },
       inputAudioTranscription: {},
       outputAudioTranscription: {},
-      systemInstruction,
+      systemInstruction: finalSystemInstruction,
     },
   });
 

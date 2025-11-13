@@ -72,6 +72,7 @@ interface CategorizedQuestions {
 interface ControllerCallbacks {
   onTranscriptionUpdate: (update: { speaker: string; text: string }) => void;
   onAudioStateChange: (isSpeaking: boolean) => void;
+  onError: (e: ErrorEvent) => void;
 }
 
 interface ControllerParams {
@@ -79,6 +80,7 @@ interface ControllerParams {
     questions: CategorizedQuestions;
     callbacks: ControllerCallbacks;
     setupData: any;
+    initialHistory: { speaker: string; text: string }[];
 }
 
 // --- The Combined Live Controller ---
@@ -90,6 +92,7 @@ export class CombinedLiveController {
     private sessionPromises: Record<Persona, Promise<any> | null> = { technical: null, behavioral: null, hr: null };
     private activePersona: Persona | null = null;
     private isClosing = false;
+    private hasErrored = false;
 
     private userStream: MediaStream | null = null;
     private inputAudioContext: AudioContext | null = null;
@@ -101,15 +104,16 @@ export class CombinedLiveController {
     private questions: CategorizedQuestions;
     private setupData: any;
     
-    private conversationHistory: { speaker: string; text: string }[] = [];
+    private conversationHistory: { speaker: string; text: string }[];
     private sources = new Set<AudioBufferSourceNode>();
     private nextStartTime = 0;
 
-    constructor({ interviewers, questions, callbacks, setupData }: ControllerParams) {
+    constructor({ interviewers, questions, callbacks, setupData, initialHistory }: ControllerParams) {
         this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
         this.callbacks = callbacks;
         this.questions = questions;
         this.setupData = setupData;
+        this.conversationHistory = [...initialHistory];
         
         this.interviewers = {
             technical: interviewers.find(i => i.role === 'Software Engineer')!,
@@ -143,9 +147,14 @@ export class CombinedLiveController {
 
         this._setupAudioProcessing();
 
-        // Kick off the interview with a greeting from HR
-        this.activePersona = 'hr';
-        this.sessions.hr?.sendRealtimeInput({ text: 'GREET_CANDIDATE' });
+        // Kick off the interview with a greeting from HR, but only if it's a new conversation
+        if (this.conversationHistory.length === 0) {
+            this.activePersona = 'hr';
+            this.sessions.hr?.sendRealtimeInput({ text: 'GREET_CANDIDATE' });
+        } else {
+            // If reconnecting, have the manager resume the conversation
+            this.askQuestion('behavioral');
+        }
     }
 
     public askQuestion(type: Persona) {
@@ -219,7 +228,7 @@ export class CombinedLiveController {
 
         const introduction = `you must begin the interview by greeting the candidate, ${candidateName}, by name. Then, introduce the panel. Say something like: "Hi ${candidateName}, welcome! My name is ${name}. I'm an HR Specialist here at ${companyName} and I've been with the company for about ${hrExperience} years. Joining us today are ${managerName}, one of our Hiring Managers who has been with us for ${managerExperience} years, and ${engineerName}, a Senior Engineer on the team who has been here for ${engineerExperience} years."`;
 
-        const systemInstruction = `You are ${name}, an expert interviewer with a helpful and supportive mindset. You are part of a panel interview.
+        let systemInstruction = `You are ${name}, an expert interviewer with a helpful and supportive mindset. You are part of a panel interview.
 Your specific role is: ${this.interviewers[persona].role}.
 Here is your list of main questions to guide your part of the conversation:\n${questionList}
 
@@ -235,6 +244,15 @@ Here is your list of main questions to guide your part of the conversation:\n${q
 - You will be prompted with 'CONTEXT_SYNC: ...' before you are asked to speak. This will give you the latest part of the conversation so you can jump in smoothly.
 - If you are ${name} (HR Specialist) and you receive the command 'GREET_CANDIDATE', ${introduction} After introducing everyone, ask a simple conversational question like "How are you doing today?" or "Ready to get started?". Wait for their response, and then proceed with the very first question from your list.`;
         
+        if (this.conversationHistory.length > 0) {
+            const historyText = this.conversationHistory.map(item => `${item.speaker}: ${item.text}`).join('\n');
+            systemInstruction += `\n\n---
+PREVIOUS CONVERSATION HISTORY (for your context):
+${historyText}
+\n---\n
+The session was just reconnected. Please review the history and resume the conversation naturally from where it left off. The last speaker was ${this.conversationHistory[this.conversationHistory.length - 1].speaker}.`;
+        }
+
         return { systemInstruction, voiceName };
     }
 
@@ -248,7 +266,13 @@ Here is your list of main questions to guide your part of the conversation:\n${q
             callbacks: {
                 onopen: () => console.log(`Session opened for ${persona}.`),
                 onclose: () => console.log(`Session closed for ${persona}.`),
-                onerror: (e) => console.error(`Session error for ${persona}:`, e),
+                onerror: (e) => {
+                    console.error(`Session error for ${persona}:`, e)
+                    if (!this.isClosing && !this.hasErrored) {
+                        this.hasErrored = true; // Prevent multiple error triggers
+                        this.callbacks.onError(e);
+                    }
+                },
                 onmessage: async (message: LiveServerMessage) => {
                     if (this.isClosing) return;
 

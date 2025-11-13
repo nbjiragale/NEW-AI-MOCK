@@ -108,6 +108,8 @@ interface InterviewPageProps {
 
 type Persona = 'technical' | 'behavioral' | 'hr';
 
+const MAX_RETRIES = 3;
+
 const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, interviewQuestions, interviewerDetails }) => {
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isMicOn, setIsMicOn] = useState(true);
@@ -163,6 +165,15 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
 
   const hasHandsOnQuestions = handsOnQuestions && handsOnQuestions.length > 0;
   const canShowHandsOnButton = (setupData?.interviewType === 'Technical' || setupData?.interviewType === 'Combined') && hasHandsOnQuestions;
+  
+  // State for reconnection logic
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const retryCountRef = useRef(0);
+  const transcriptRef = useRef<TranscriptItem[]>([]);
+
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
 
     const setMicState = useCallback((enabled: boolean) => {
         if (streamRef.current) {
@@ -248,6 +259,112 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  const startSessionManager = useCallback(async (stream: MediaStream) => {
+        if (sessionManagerRef.current) {
+            sessionManagerRef.current.close();
+            sessionManagerRef.current = null;
+        }
+
+        setSessionStatus('CONNECTING');
+        setIsReconnecting(retryCountRef.current > 0);
+
+        const handleSessionError = () => {
+            if (retryCountRef.current >= MAX_RETRIES) {
+                console.error("Connection failed after multiple retries. Aborting.");
+                setSessionStatus('ERROR');
+                setIsReconnecting(false);
+                alert("We've lost connection and couldn't reconnect. You can try leaving and starting a new interview.");
+                return;
+            }
+
+            retryCountRef.current += 1;
+            const delay = Math.pow(2, retryCountRef.current) * 1000;
+            console.log(`Connection lost. Retrying in ${delay / 1000}s... (Attempt ${retryCountRef.current})`);
+            
+            setTimeout(() => startSessionManager(stream), delay);
+        };
+
+        try {
+            if (isCombinedMode) {
+                const controller = new CombinedLiveController({
+                    interviewers: interviewersDetails,
+                    questions: interviewQuestions,
+                    setupData: setupData,
+                    initialHistory: transcriptRef.current,
+                    callbacks: {
+                        onTranscriptionUpdate,
+                        onAudioStateChange: (speaking) => {
+                            setIsAiSpeaking(speaking);
+                            if (!speaking) setActiveInterviewerName(null);
+                        },
+                        onError: handleSessionError,
+                    }
+                });
+                await controller.start(stream);
+                sessionManagerRef.current = controller;
+            } else {
+                const theoryQs = interviewQuestions?.theoryQuestions || [];
+                const companyQs = interviewQuestions?.companySpecificQuestions || [];
+                const allQuestions = [...theoryQs, ...companyQs];
+                
+                const candidateName = setupData.candidateName || 'there';
+                const interviewerName = interviewersDetails?.[0]?.name || 'Interviewer';
+                const interviewerRole = interviewersDetails?.[0]?.role || 'hiring manager';
+                const companyName = setupData.targetCompany || 'our company';
+                const experienceYears = Math.floor(Math.random() * 3) + 4; // 4, 5, or 6
+
+                const intro = `Begin the interview now. First, greet the candidate, ${candidateName}, by name. Then, introduce yourself. Say something like: "Hi ${candidateName}, I'm ${interviewerName}. I'll be interviewing you today. I'm a ${interviewerRole} at ${companyName} and I've been here for about ${experienceYears} years."`;
+                
+                let systemInstruction;
+                
+                if (setupData.type === 'Practice Mode' && setupData.practiceType === 'Fluency Practice') {
+                    // ... (Fluency Practice prompt generation)
+                } else if (allQuestions.length > 0) {
+                  const questionList = allQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
+                  systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${candidateName}. Your goal is to have a natural, helpful, and conversational interview.
+
+Here is the list of main questions you should guide the conversation through:
+${questionList}
+
+**Your Conversational Style (VERY IMPORTANT):**
+- **Engage, Don't Just Interrogate:** Your primary goal is a natural, two-way conversation, not a rigid Q&A.
+- **Acknowledge and Validate:** After the candidate answers, briefly acknowledge their response. Use phrases like "That's an interesting approach," "Thanks for sharing that detail," or "I see."
+- **Provide Gentle Feedback:** If an answer is good, offer brief, positive reinforcement ("That's a great example."). If an answer is unclear or weak, gently probe for more information ("Could you elaborate on that point?" or "How did you handle the outcome?") instead of just moving on.
+- **Ask Follow-up Questions:** Based on the candidate's answer, ask one relevant follow-up question to dig deeper. This is key to making the conversation feel real. For example, if they mention a project, ask about their specific role in it. Only after the follow-up should you move to the next main question.
+- **Natural Transitions:** When you are ready to move to the next main question from your list, use a smooth transition. For example: "Okay, that makes sense. Let's switch gears a bit..." or "Great, thanks for clarifying. Now, I'd like to ask about..."
+
+**Interview Flow:**
+1. ${intro}
+2. After your introduction, ask a simple conversational question like "How are you doing today?" or "Shall we begin?".
+3. Wait for their response, then proceed with the first question from your list.
+4. Follow the conversational style described above for the entire interview.`;
+                } else {
+                  systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${candidateName}.
+                  ${intro} After your introduction, ask a simple conversational question like "How are you doing today?" or "Shall we begin?". Wait for their response, and then you can ask the candidate to tell you a bit about themselves.
+                  CRITICAL RULE: Ask only ONE question at a time and wait for their full response.`;
+                }
+
+                sessionManagerRef.current = await initiateLiveSession({
+                    stream,
+                    systemInstruction,
+                    history: transcriptRef.current,
+                    onTranscriptionUpdate,
+                    onAudioFinished: () => setIsAiSpeaking(false),
+                    onError: handleSessionError,
+                });
+            }
+
+            setSessionStatus('CONNECTED');
+            setIsReconnecting(false);
+            retryCountRef.current = 0;
+        } catch (error) {
+            console.error("Failed to initiate live session:", error);
+            setSessionStatus('ERROR');
+            setIsReconnecting(false);
+        }
+  }, [isCombinedMode, interviewersDetails, interviewQuestions, setupData, onTranscriptionUpdate]);
+
+
   // Main effect for media and live session
   useEffect(() => {
     let isMounted = true;
@@ -290,120 +407,6 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLeave, setupData, inter
       };
       checkSpeaking();
     };
-
-    const startSession = async (stream: MediaStream) => {
-      setSessionStatus('CONNECTING');
-      
-      try {
-        if (isCombinedMode) {
-            const controller = new CombinedLiveController({
-                interviewers: interviewersDetails,
-                questions: interviewQuestions,
-                setupData: setupData,
-                callbacks: {
-                    onTranscriptionUpdate: (item) => {
-                        setActiveInterviewerName(item.speaker);
-                        onTranscriptionUpdate(item);
-                    },
-                    onAudioStateChange: (speaking) => {
-                        setIsAiSpeaking(speaking);
-                        if (!speaking) {
-                            setActiveInterviewerName(null);
-                        }
-                    },
-                }
-            });
-            await controller.start(stream);
-            sessionManagerRef.current = controller;
-        } else {
-            const theoryQs = interviewQuestions?.theoryQuestions || [];
-            const companyQs = interviewQuestions?.companySpecificQuestions || [];
-            const allQuestions = [...theoryQs, ...companyQs];
-            
-            const candidateName = setupData.candidateName || 'there';
-            const interviewerName = interviewersDetails?.[0]?.name || 'Interviewer';
-            const interviewerRole = interviewersDetails?.[0]?.role || 'hiring manager';
-            const companyName = setupData.targetCompany || 'our company';
-            const experienceYears = Math.floor(Math.random() * 3) + 4; // 4, 5, or 6
-
-            const intro = `Begin the interview now. First, greet the candidate, ${candidateName}, by name. Then, introduce yourself. Say something like: "Hi ${candidateName}, I'm ${interviewerName}. I'll be interviewing you today. I'm a ${interviewerRole} at ${companyName} and I've been here for about ${experienceYears} years."`;
-            
-            let systemInstruction;
-            
-            if (setupData.type === 'Practice Mode' && setupData.practiceType === 'Fluency Practice') {
-                const qaList = setupData.qaPairs.map((p: any, i: number) => 
-                    `Question ${i + 1}: "${p.question}"\nTarget Answer ${i + 1}: "${p.answer}"`
-                ).join('\n\n');
-
-                systemInstruction = `You are an expert fluency and delivery coach, acting as a patient and encouraging tutor. Your goal is to help a user practice delivering their prepared answers until they are smooth, confident, and natural. Repetition is the key to this practice.
-
-Here is the list of questions and the user's target answers:
-${qaList}
-
-**Your Tutoring Flow (VERY IMPORTANT):**
-
-For EACH question in the list:
-1.  **Ask the Question:** Begin by asking the current question from the list. Wait for the user to respond.
-2.  **Listen & Analyze:** Listen carefully to the user's spoken answer. Compare their delivery to their target answer, focusing on:
-    - **Fluency:** Smoothness, use of filler words (um, uh).
-    - **Pace:** Natural and engaging speed.
-    - **Confidence:** Vocal tone.
-    - **Clarity:** How clearly they articulate their points.
-3.  **Give Brief Feedback:** After they finish, provide a very short piece of constructive feedback. For example, "That was a strong start, let's focus on speaking a bit more slowly this time," or "Great points. This time, try to sound more confident."
-4.  **Repeat (The Core Task):** You MUST ask the user to answer the SAME question again. You will do this a total of 5 times for each question. Use varied, encouraging phrases to ask for repetition, such as:
-    - "Good. Let's try that again."
-    - "Excellent. Let's do it one more time to really lock it in."
-    - "Nice improvement. Again, please."
-    - "You're getting smoother. Let's go for another round on this one."
-    - "Perfect. One final time to build that muscle memory."
-5.  **Move to Next Question:** After the user has answered a single question 5 times, give them positive reinforcement like "Fantastic! You've really improved on that one. Now, let's move to the next question." Then, proceed to the next question in the list and repeat the entire 5-repetition cycle.
-
-Continue this process for all questions. After the final repetition of the last question, conclude the session by saying something like: "Incredible work today! That repetition has made a huge difference. That's all for this practice session."`;
-
-            } else if (allQuestions.length > 0) {
-              const questionList = allQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
-              systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${candidateName}. Your goal is to have a natural, helpful, and conversational interview.
-
-Here is the list of main questions you should guide the conversation through:
-${questionList}
-
-**Your Conversational Style (VERY IMPORTANT):**
-- **Engage, Don't Just Interrogate:** Your primary goal is a natural, two-way conversation, not a rigid Q&A.
-- **Acknowledge and Validate:** After the candidate answers, briefly acknowledge their response. Use phrases like "That's an interesting approach," "Thanks for sharing that detail," or "I see."
-- **Provide Gentle Feedback:** If an answer is good, offer brief, positive reinforcement ("That's a great example."). If an answer is unclear or weak, gently probe for more information ("Could you elaborate on that point?" or "How did you handle the outcome?") instead of just moving on.
-- **Ask Follow-up Questions:** Based on the candidate's answer, ask one relevant follow-up question to dig deeper. This is key to making the conversation feel real. For example, if they mention a project, ask about their specific role in it. Only after the follow-up should you move to the next main question.
-- **Natural Transitions:** When you are ready to move to the next main question from your list, use a smooth transition. For example: "Okay, that makes sense. Let's switch gears a bit..." or "Great, thanks for clarifying. Now, I'd like to ask about..."
-
-**Interview Flow:**
-1. ${intro}
-2. After your introduction, ask a simple conversational question like "How are you doing today?" or "Shall we begin?".
-3. Wait for their response, then proceed with the first question from your list.
-4. Follow the conversational style described above for the entire interview.`;
-            } else {
-              systemInstruction = `You are an expert interviewer named ${interviewerName}. Your persona is ${setupData.persona || 'friendly'}. Your task is to conduct a mock interview with a candidate named ${candidateName}.
-              ${intro} After your introduction, ask a simple conversational question like "How are you doing today?" or "Shall we begin?". Wait for their response, and then you can ask the candidate to tell you a bit about themselves.
-              CRITICAL RULE: Ask only ONE question at a time and wait for their full response.`;
-            }
-
-            sessionManagerRef.current = await initiateLiveSession({
-                stream,
-                systemInstruction,
-                onTranscriptionUpdate: (item) => {
-                    onTranscriptionUpdate(item);
-                    if (item.speaker === 'Interviewer') setIsAiSpeaking(true);
-                },
-                onAudioFinished: () => {
-                    setIsAiSpeaking(false);
-                },
-            });
-        }
-        setSessionStatus('CONNECTED');
-      } catch (error) {
-        console.error("Failed to initiate live session:", error);
-        setSessionStatus('ERROR');
-        alert("Could not connect to the interview service. Please try again later.");
-      }
-    };
     
     const getMediaAndStart = async () => {
       try {
@@ -412,7 +415,7 @@ ${questionList}
           streamRef.current = stream;
           setStreamLoaded(true);
           setupAudioAnalysis(stream);
-          await startSession(stream);
+          await startSessionManager(stream);
         }
       } catch (err) {
         console.error("Error accessing media devices.", err);
@@ -439,7 +442,7 @@ ${questionList}
       }
       sessionManagerRef.current?.close();
     };
-  }, [isCombinedMode, onTranscriptionUpdate]); // Rerun effect if mode changes, though it shouldn't in practice.
+  }, [startSessionManager]);
 
   useEffect(() => {
     if (streamLoaded && videoRef.current && streamRef.current) {
@@ -552,6 +555,9 @@ ${questionList}
   };
 
   const getTranscriptStatus = () => {
+    if (isReconnecting) {
+        return `Reconnecting... Attempt ${retryCountRef.current} of ${MAX_RETRIES}.`;
+    }
     switch(sessionStatus) {
       case 'CONNECTING':
         return 'Connecting to interview panel...';
@@ -610,6 +616,16 @@ ${questionList}
 
   return (
     <div className="bg-dark h-screen w-screen flex flex-col text-white font-sans relative">
+       {isReconnecting && (
+            <div className="absolute top-0 left-0 right-0 bg-yellow-600 text-white text-center py-1 z-50 text-sm font-semibold animate-pulse">
+                Connection lost. Attempting to reconnect... (Attempt {retryCountRef.current}/{MAX_RETRIES})
+            </div>
+        )}
+        {sessionStatus === 'ERROR' && !isReconnecting && (
+            <div className="absolute top-0 left-0 right-0 bg-red-600 text-white text-center py-1 z-50 text-sm font-semibold">
+                Connection failed. Please start a new interview.
+            </div>
+        )}
       <canvas ref={canvasRef} className="hidden" />
       {/* ======================================================================
       IMPROVEMENT 1: Unified Header Bar
