@@ -48,17 +48,40 @@ export const useLiveSessionManager = (setupData: any, interviewQuestions: any, i
     }, []);
 
     const getSystemInstruction = useCallback(() => {
-        if (setupData?.interviewType === 'Combined') return ''; // Handled by controller
-
-        const theoryQs = interviewQuestions?.theoryQuestions || [];
-        const companyQs = interviewQuestions?.companySpecificQuestions || [];
-        const allQuestions = [...theoryQs, ...companyQs];
-        
         const candidateName = setupData.candidateName || 'there';
         const interviewerName = interviewerDetails?.[0]?.name || 'Interviewer';
+        
+        if (setupData?.type === 'Practice Mode' && setupData?.practiceType === 'Fluency Practice') {
+            const questionList = (interviewQuestions?.theoryQuestions || [])
+                .map((q: string, i: number) => `${i + 1}. ${q}`)
+                .join('\n');
+            
+            return `You are a practice partner named ${interviewerName} for an interview fluency drill. The user, ${candidateName}, has provided a list of questions they want to practice answering. Your role is to help them rehearse.
+
+**Your Instructions (VERY IMPORTANT):**
+1.  Your ONLY task is to ask these questions to the user, one by one, in the exact order they are provided.
+2.  Read each question verbatim. Do NOT rephrase it.
+3.  After the user provides their answer, your ONLY response should be a simple, neutral transition like "Okay, thank you.", "Got it. Let's move on.", or "Alright, next question."
+4.  After your transition, immediately ask the next question from the list.
+5.  **DO NOT ask any follow-up questions.**
+6.  **DO NOT provide any feedback on their answers.**
+7.  **DO NOT engage in small talk or chitchat.** Your role is strictly to read the questions from the script.
+
+Here is the list of questions you must ask:
+${questionList}
+
+Start by saying "Hello ${candidateName}, I'll be your practice partner today. Let's begin with your first question." and then immediately ask the first question on the list.`;
+        }
+        
+        if (setupData?.interviewType === 'Combined') return ''; // Handled by controller
+
         const interviewerRole = interviewerDetails?.[0]?.role || 'hiring manager';
         const companyName = setupData.targetCompany || 'our company';
         const experienceYears = Math.floor(Math.random() * 3) + 4;
+        
+        const theoryQs = interviewQuestions?.theoryQuestions || [];
+        const companyQs = interviewQuestions?.companySpecificQuestions || [];
+        const allQuestions = [...theoryQs, ...companyQs];
 
         const intro = `Begin the interview with a warm and welcoming tone. First, greet the candidate, ${candidateName}, by name. Then, introduce yourself. Say something like: "Hi ${candidateName}, it's great to meet you! My name is ${interviewerName}, and I'll be your interviewer today. I'm a ${interviewerRole} at ${companyName}, and I've been here for about ${experienceYears} years."`;
         
