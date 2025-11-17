@@ -75,7 +75,6 @@ export const useMediaStream = (recordSession: boolean) => {
                 if (isMounted) {
                     streamRef.current = stream;
 
-                    // --- START of FIX ---
                     const videoTrack = stream.getVideoTracks()[0];
                     if (videoTrack) {
                         // Set initial state directly from the track's current state
@@ -86,7 +85,6 @@ export const useMediaStream = (recordSession: boolean) => {
                         videoTrack.onmute = () => setIsCameraOn(false);
                         videoTrack.onunmute = () => setIsCameraOn(true);
                     }
-                    // --- END of FIX ---
 
                     setStreamLoaded(true);
                     setupAudioAnalysis(stream);
@@ -107,11 +105,9 @@ export const useMediaStream = (recordSession: boolean) => {
             audioContextRef.current?.close().catch(console.error);
             if (streamRef.current) {
                 streamRef.current.getTracks().forEach(track => {
-                    // --- START of FIX ---
                     // Clean up event listeners on unmount
                     track.onmute = null;
                     track.onunmute = null;
-                    // --- END of FIX ---
                     track.stop();
                 });
                 streamRef.current = null;

@@ -25,8 +25,7 @@ export const useLiveSessionManager = (setupData: any, interviewQuestions: any, i
     const handleTranscriptionUpdate = useCallback(({ speaker, text, isFinal }: { speaker: string; text: string; isFinal: boolean }) => {
         setTranscript(prev => {
             const newTranscript = [...prev];
-            // FIX: The `findLastIndex` method is not available in all environments.
-            // Manually implementing the logic ensures broader compatibility.
+            // FIX: Replaced findLastIndex with a manual for-loop for broader compatibility.
             let lastInterimIndex = -1;
             for (let i = newTranscript.length - 1; i >= 0; i--) {
                 if (newTranscript[i].speaker === speaker && newTranscript[i].status === 'interim') {
