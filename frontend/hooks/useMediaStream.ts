@@ -74,6 +74,20 @@ export const useMediaStream = (recordSession: boolean) => {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 if (isMounted) {
                     streamRef.current = stream;
+
+                    // --- START of FIX ---
+                    const videoTrack = stream.getVideoTracks()[0];
+                    if (videoTrack) {
+                        // Set initial state directly from the track's current state
+                        setIsCameraOn(videoTrack.enabled);
+
+                        // Add event listeners to sync React state with the track state,
+                        // handling changes from browser UI or other sources.
+                        videoTrack.onmute = () => setIsCameraOn(false);
+                        videoTrack.onunmute = () => setIsCameraOn(true);
+                    }
+                    // --- END of FIX ---
+
                     setStreamLoaded(true);
                     setupAudioAnalysis(stream);
                 }
@@ -92,18 +106,28 @@ export const useMediaStream = (recordSession: boolean) => {
             if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current);
             audioContextRef.current?.close().catch(console.error);
             if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
+                streamRef.current.getTracks().forEach(track => {
+                    // --- START of FIX ---
+                    // Clean up event listeners on unmount
+                    track.onmute = null;
+                    track.onunmute = null;
+                    // --- END of FIX ---
+                    track.stop();
+                });
                 streamRef.current = null;
             }
         };
     }, [setupAudioAnalysis]);
 
-    // Effect to attach the stream to the video element once it's ready
+    // Effect to attach the stream to the video element whenever either is ready.
+    // This runs on every render but the inner check prevents unnecessary re-assignments.
     useEffect(() => {
-        if (streamLoaded && videoRef.current && streamRef.current) {
-            videoRef.current.srcObject = streamRef.current;
+        if (videoRef.current && streamRef.current) {
+            if (videoRef.current.srcObject !== streamRef.current) {
+                videoRef.current.srcObject = streamRef.current;
+            }
         }
-    }, [streamLoaded]);
+    });
     
     useEffect(() => {
         if (!recordSession || !isCameraOn || !videoRef.current || !canvasRef.current || !streamLoaded) return;
@@ -129,8 +153,10 @@ export const useMediaStream = (recordSession: boolean) => {
         if (!streamRef.current) return;
         const videoTrack = streamRef.current.getVideoTracks()[0];
         if (videoTrack) {
+            // By changing the 'enabled' property, we trigger the 'onmute' or 'onunmute'
+            // event listeners added in the useEffect hook, which handles updating the state.
+            // This ensures state is synced from a single source of truth (the track itself).
             videoTrack.enabled = !videoTrack.enabled;
-            setIsCameraOn(videoTrack.enabled);
         }
     }, []);
 
